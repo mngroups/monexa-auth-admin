@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { APP_NAME } from "@/lib/app-config";
 
-const IMG_CLASS = "max-h-14 max-w-[200px] object-contain";
+const IMG_CLASS = "max-h-22 max-w-[min(280px,100%)] object-contain";
 
 /**
  * The client's logo (served by monexa-auth) for the top of the auth card: the default logo in
