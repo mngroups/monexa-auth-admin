@@ -9,7 +9,7 @@ vi.mock("@/features/admin-shared/actions/temporary-password", () => ({
 const actions = await import("../members.actions");
 
 const member = {
-  userId: "u2",
+  userId: "22222222-2222-4222-8222-222222222222",
   email: "b@x.id",
   username: "budi",
   name: "Budi",
@@ -63,48 +63,67 @@ describe("members actions", () => {
   });
 
   it("removes a member", async () => {
-    apiClient.mockResolvedValue(ok({ userId: "u2" }));
-    const res = await actions.removeMemberAction("u2");
-    expect(res).toEqual({ ok: true, data: { userId: "u2" } });
+    apiClient.mockResolvedValue(ok({ userId: "22222222-2222-4222-8222-222222222222" }));
+    const res = await actions.removeMemberAction("22222222-2222-4222-8222-222222222222");
+    expect(res).toEqual({ ok: true, data: { userId: "22222222-2222-4222-8222-222222222222" } });
     expect(lastCall().init.method).toBe("DELETE");
-    expect(lastCall().path).toBe("/api/admin/org/members/u2");
+    expect(lastCall().path).toBe("/api/admin/org/members/22222222-2222-4222-8222-222222222222");
   });
 
   it("activates and deactivates", async () => {
     apiClient.mockResolvedValue(ok(member));
-    await actions.setMemberActiveAction("u2", true);
-    expect(lastCall().path).toBe("/api/admin/org/members/u2/activate");
-    await actions.setMemberActiveAction("u2", false);
-    expect(lastCall().path).toBe("/api/admin/org/members/u2/deactivate");
+    await actions.setMemberActiveAction("22222222-2222-4222-8222-222222222222", true);
+    expect(lastCall().path).toBe(
+      "/api/admin/org/members/22222222-2222-4222-8222-222222222222/activate"
+    );
+    await actions.setMemberActiveAction("22222222-2222-4222-8222-222222222222", false);
+    expect(lastCall().path).toBe(
+      "/api/admin/org/members/22222222-2222-4222-8222-222222222222/deactivate"
+    );
   });
 
   it("resets a password with a server-generated one", async () => {
     apiClient.mockResolvedValue(ok(member));
-    const res = await actions.resetMemberPasswordAction("u2");
+    const res = await actions.resetMemberPasswordAction("22222222-2222-4222-8222-222222222222");
     expect(res).toEqual({ ok: true, data: { temporaryPassword: "Gen-Pass-123456" } });
-    expect(lastCall().path).toBe("/api/admin/org/members/u2/reset-password");
+    expect(lastCall().path).toBe(
+      "/api/admin/org/members/22222222-2222-4222-8222-222222222222/reset-password"
+    );
     expect(lastCall().body).toEqual({ temporaryPassword: "Gen-Pass-123456" });
   });
 
   it("sets roles", async () => {
     apiClient.mockResolvedValue(ok(member));
-    await actions.setMemberRolesAction("u2", ["r1", "r2"]);
+    await actions.setMemberRolesAction("22222222-2222-4222-8222-222222222222", [
+      "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+      "cccccccc-cccc-4ccc-8ccc-cccccccccccc",
+    ]);
     expect(lastCall().init.method).toBe("PUT");
-    expect(lastCall().body).toEqual({ roleIds: ["r1", "r2"] });
+    expect(lastCall().body).toEqual({
+      roleIds: ["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb", "cccccccc-cccc-4ccc-8ccc-cccccccccccc"],
+    });
   });
 
   it("lists the org's roles", async () => {
     apiClient.mockResolvedValue(
-      ok([{ id: "r1", name: "Admin", description: null, appId: "a1", appName: "Billing" }])
+      ok([
+        {
+          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          name: "Admin",
+          description: null,
+          appId: "a1",
+          appName: "Billing",
+        },
+      ])
     );
     const res = await actions.listOrgRolesAction();
-    expect(res).toMatchObject({ ok: true, data: [{ id: "r1" }] });
+    expect(res).toMatchObject({ ok: true, data: [{ id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb" }] });
     expect(lastCall().path).toBe("/api/admin/org/roles");
   });
 
   it("returns the BE message on a refusal", async () => {
     apiClient.mockResolvedValue({ success: false, message: "Tidak boleh", code: 403, data: null });
-    expect(await actions.removeMemberAction("u2")).toMatchObject({
+    expect(await actions.removeMemberAction("22222222-2222-4222-8222-222222222222")).toMatchObject({
       ok: false,
       error: { message: "Tidak boleh" },
     });
@@ -119,6 +138,17 @@ describe("members actions", () => {
       await actions.createMemberAction({ email: "a@b.c", username: "", name: "" })
     ).toMatchObject({ ok: false });
     expect(await actions.addExistingMemberAction({ email: "" })).toMatchObject({ ok: false });
+    expect(apiClient).not.toHaveBeenCalled();
+  });
+
+  it("refuses invalid arguments with 'Data tidak valid'", async () => {
+    const invalid = { ok: false, error: { message: "Data tidak valid" } };
+    expect(await actions.listMembersAction({ page: 1.5, pageSize: 10 })).toMatchObject(invalid);
+    expect(await actions.removeMemberAction("u2")).toMatchObject(invalid);
+    expect(await actions.setMemberActiveAction("u2", true)).toMatchObject(invalid);
+    expect(await actions.resetMemberPasswordAction("u2")).toMatchObject(invalid);
+    const id = "22222222-2222-4222-8222-222222222222";
+    expect(await actions.setMemberRolesAction(id, ["r1"])).toMatchObject(invalid);
     expect(apiClient).not.toHaveBeenCalled();
   });
 });

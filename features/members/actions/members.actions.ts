@@ -1,21 +1,18 @@
 "use server";
 
-import {
-  ApiError,
-  apiEnvelope,
-  type ServerActionResult,
-  throwIfFail,
-  wrapServerAction,
-} from "@mono/auth";
+import { apiEnvelope, type ServerActionResult, throwIfFail, wrapServerAction } from "@mono/auth";
 import { z } from "zod";
 
 import { generateTemporaryPassword } from "@/features/admin-shared/actions/temporary-password";
 import type { PageParams } from "@/features/admin-shared/schema";
+import { idSchema, pageParamsSchema, parseInput } from "@/features/admin-shared/validation";
 import { apiClient } from "@/lib/session";
 
 import {
   type CreateMemberValues,
+  createMemberSchema,
   type ExistingMemberValues,
+  existingMemberSchema,
   type Member,
   type MembersPage,
   memberSchema,
@@ -48,18 +45,18 @@ async function call<S extends z.ZodTypeAny>(
   return (res as { data: unknown }).data as z.infer<S>;
 }
 
-const text = (value: unknown, label: string): string => {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new ApiError(`${label} tidak valid`, 400, 400);
-  }
-  return value;
-};
+const rolesBodySchema = z.object({ roleIds: z.array(idSchema).max(500) });
+const memberId = (value: unknown) => encodeURIComponent(parseInput(idSchema, value));
 
 export async function listMembersAction(
   params: PageParams
 ): Promise<ServerActionResult<MembersPage>> {
   return wrapServerAction(() =>
-    call("/members", { method: "GET", params: { ...params } }, membersPageSchema)
+    call(
+      "/members",
+      { method: "GET", params: { ...parseInput(pageParamsSchema, params) } },
+      membersPageSchema
+    )
   );
 }
 
@@ -67,15 +64,16 @@ export async function createMemberAction(
   values: CreateMemberValues
 ): Promise<ServerActionResult<{ member: Member; temporaryPassword: string }>> {
   return wrapServerAction(async () => {
+    const input = parseInput(createMemberSchema, values);
     const temporaryPassword = generateTemporaryPassword();
     const member = await call(
       "/members",
       {
         method: "POST",
         body: {
-          email: text(values?.email, "Email"),
-          username: values.username || undefined,
-          name: text(values.name, "Nama"),
+          email: input.email,
+          username: input.username || undefined,
+          name: input.name,
           temporaryPassword,
         },
       },
@@ -91,7 +89,7 @@ export async function addExistingMemberAction(
   return wrapServerAction(() =>
     call(
       "/members/existing",
-      { method: "POST", body: { email: text(values?.email, "Email") } },
+      { method: "POST", body: { email: parseInput(existingMemberSchema, values).email } },
       memberSchema
     )
   );
@@ -101,11 +99,7 @@ export async function removeMemberAction(
   userId: string
 ): Promise<ServerActionResult<{ userId: string }>> {
   return wrapServerAction(() =>
-    call(
-      `/members/${encodeURIComponent(text(userId, "Anggota"))}`,
-      { method: "DELETE" },
-      removedMemberSchema
-    )
+    call(`/members/${memberId(userId)}`, { method: "DELETE" }, removedMemberSchema)
   );
 }
 
@@ -115,7 +109,7 @@ export async function setMemberActiveAction(
 ): Promise<ServerActionResult<Member>> {
   return wrapServerAction(() =>
     call(
-      `/members/${encodeURIComponent(text(userId, "Anggota"))}/${active ? "activate" : "deactivate"}`,
+      `/members/${memberId(userId)}/${parseInput(z.boolean(), active) ? "activate" : "deactivate"}`,
       { method: "POST" },
       memberSchema
     )
@@ -126,12 +120,9 @@ export async function resetMemberPasswordAction(
   userId: string
 ): Promise<ServerActionResult<{ temporaryPassword: string }>> {
   return wrapServerAction(async () => {
+    const path = `/members/${memberId(userId)}/reset-password`;
     const temporaryPassword = generateTemporaryPassword();
-    await call(
-      `/members/${encodeURIComponent(text(userId, "Anggota"))}/reset-password`,
-      { method: "POST", body: { temporaryPassword } },
-      memberSchema
-    );
+    await call(path, { method: "POST", body: { temporaryPassword } }, memberSchema);
     return { temporaryPassword };
   });
 }
@@ -142,8 +133,8 @@ export async function setMemberRolesAction(
 ): Promise<ServerActionResult<Member>> {
   return wrapServerAction(() =>
     call(
-      `/members/${encodeURIComponent(text(userId, "Anggota"))}/roles`,
-      { method: "PUT", body: { roleIds: z.array(z.string()).parse(roleIds) } },
+      `/members/${memberId(userId)}/roles`,
+      { method: "PUT", body: parseInput(rolesBodySchema, { roleIds }) },
       memberSchema
     )
   );

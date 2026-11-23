@@ -82,10 +82,17 @@ export function OrgsPage() {
     return () => clearTimeout(timer);
   }, [search]);
 
-  const orgs = useOrgs({ page, pageSize: PAGE_SIZE, ...(q ? { q } : {}) });
+  const orgs = useOrgs({ page, pageSize: PAGE_SIZE, ...(q ? { q } : {}) }, { staleTime: 0 });
   const items = orgs.data?.items ?? [];
   const detail =
     modal?.mode === "detail" ? (items.find((o) => o.id === modal.target) ?? null) : null;
+
+  // A detail link to an org that is not on the loaded page drops its params
+  // instead of leaving a dangling ?modal=.
+  const listSettled = orgs.isSuccess && !orgs.isPlaceholderData;
+  useEffect(() => {
+    if (modal?.mode === "detail" && listSettled && detail === null) closeModal();
+  }, [modal?.mode, listSettled, detail, closeModal]);
 
   const create = useCreateOrg();
   const setActive = useSetOrgActive();

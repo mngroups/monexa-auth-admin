@@ -57,11 +57,12 @@ async function fillCreateForm() {
     within(dialog).getByLabelText("Post-logout redirect URI (satu per baris)"),
     "https://pos.id/bye"
   );
-  await userEvent.type(within(dialog).getByLabelText("Masa berlaku access token (detik)"), "900");
-  await userEvent.type(
-    within(dialog).getByLabelText("Masa berlaku refresh token (detik)"),
-    "86400"
-  );
+  const access = within(dialog).getByLabelText("Masa berlaku access token (detik)");
+  await userEvent.clear(access);
+  await userEvent.type(access, "900");
+  const refresh = within(dialog).getByLabelText("Masa berlaku refresh token (detik)");
+  await userEvent.clear(refresh);
+  await userEvent.type(refresh, "86400");
   return dialog;
 }
 
@@ -207,5 +208,70 @@ describe("AppsPage", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Simpan" }));
     expect(await screen.findByText("Client ID sudah dipakai")).toBeInTheDocument();
     expect(screen.queryByText("Simpan sekarang — tidak akan ditampilkan lagi.")).toBeNull();
+  });
+
+  const URL_MESSAGE = "Setiap baris harus URL lengkap, mis. https://app.contoh.id/auth/callback";
+
+  async function openCreate() {
+    renderPage();
+    await screen.findByText("Billing");
+    await userEvent.click(screen.getByRole("button", { name: "Tambah aplikasi" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Client ID"), "pos");
+    await userEvent.type(within(dialog).getByLabelText("Nama"), "POS");
+    return dialog;
+  }
+
+  it.each([["Redirect URI (satu per baris)"], ["Post-logout redirect URI (satu per baris)"]])(
+    "refuses a line in '%s' that is not an absolute URL",
+    async (label) => {
+      const dialog = await openCreate();
+      await userEvent.type(
+        within(dialog).getByLabelText(label),
+        "https://pos.id/cb{enter}bukan-url"
+      );
+      expect(await within(dialog).findByText(URL_MESSAGE)).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Simpan" })).toBeDisabled();
+      expect(actions.createAppAction).not.toHaveBeenCalled();
+    }
+  );
+
+  it("accepts blank lines between valid URLs", async () => {
+    const dialog = await openCreate();
+    await userEvent.type(
+      within(dialog).getByLabelText("Redirect URI (satu per baris)"),
+      "https://pos.id/cb{enter}{enter}  {enter}https://pos.id/cb2"
+    );
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: "Simpan" })).toBeEnabled()
+    );
+    expect(within(dialog).queryByText(URL_MESSAGE)).not.toBeInTheDocument();
+  });
+
+  it("starts from the BE defaults (600 s / 604800 s, authorization code) and says so", async () => {
+    const dialog = await openCreate();
+    expect(within(dialog).getByLabelText("Masa berlaku access token (detik)")).toHaveValue("600");
+    expect(within(dialog).getByLabelText("Masa berlaku refresh token (detik)")).toHaveValue(
+      "604800"
+    );
+    expect(within(dialog).getByRole("checkbox", { name: "Authorization code" })).toBeChecked();
+    expect(within(dialog).getByRole("checkbox", { name: "Password" })).not.toBeChecked();
+    expect(within(dialog).getByText(/Access token: 60–86\.400 detik/)).toBeInTheDocument();
+    expect(within(dialog).getByText(/Refresh token: 300–31\.536\.000 detik/)).toBeInTheDocument();
+  });
+
+  it.each([
+    ["Masa berlaku access token (detik)", "59"],
+    ["Masa berlaku access token (detik)", "86401"],
+    ["Masa berlaku refresh token (detik)", "299"],
+    ["Masa berlaku refresh token (detik)", "31536001"],
+  ])("refuses %s = %s (outside the BE bounds)", async (label, value) => {
+    const dialog = await openCreate();
+    const field = within(dialog).getByLabelText(label);
+    await userEvent.clear(field);
+    await userEvent.type(field, value);
+    await waitFor(() =>
+      expect(within(dialog).getByRole("button", { name: "Simpan" })).toBeDisabled()
+    );
   });
 });

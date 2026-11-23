@@ -9,7 +9,7 @@ const item = {
   id: "e1",
   at: "2026-11-02T10:00:00.000Z",
   actorUserId: "u1",
-  orgId: "o1",
+  orgId: "11111111-1111-4111-8111-111111111111",
   action: "member.create",
   targetType: "user",
   targetId: "u2",
@@ -29,7 +29,7 @@ describe("listActivityAction", () => {
       page: 1,
       pageSize: 10,
       action: "member",
-      orgId: "x",
+      orgId: "11111111-1111-4111-8111-111111111111",
     });
     expect(res).toMatchObject({ ok: true, data: { total: 1 } });
     const [path, init] = apiClient.mock.calls[0] as [string, { params: unknown }];
@@ -43,7 +43,7 @@ describe("listActivityAction", () => {
       scope: "platform",
       page: 2,
       pageSize: 10,
-      orgId: "o1",
+      orgId: "11111111-1111-4111-8111-111111111111",
       from: "2026-11-01T00:00:00.000Z",
       to: "2026-11-02T00:00:00.000Z",
     });
@@ -52,7 +52,7 @@ describe("listActivityAction", () => {
     expect(init.params).toEqual({
       page: 2,
       pageSize: 10,
-      orgId: "o1",
+      orgId: "11111111-1111-4111-8111-111111111111",
       from: "2026-11-01T00:00:00.000Z",
       to: "2026-11-02T00:00:00.000Z",
     });
@@ -62,5 +62,16 @@ describe("listActivityAction", () => {
     apiClient.mockResolvedValue({ success: false, message: "Ditolak", code: 403 });
     const res = await listActivityAction({ scope: "org", page: 1, pageSize: 10 });
     expect(res).toMatchObject({ ok: false, error: { message: "Ditolak" } });
+  });
+
+  it("refuses invalid arguments with 'Data tidak valid' and never calls the BE", async () => {
+    const invalid = { ok: false, error: { message: "Data tidak valid" } };
+    const base = { scope: "org" as const, page: 1, pageSize: 10 };
+    expect(await listActivityAction({ ...base, scope: "all" as never })).toMatchObject(invalid);
+    expect(await listActivityAction({ ...base, page: 0 })).toMatchObject(invalid);
+    expect(await listActivityAction({ ...base, pageSize: 101 })).toMatchObject(invalid);
+    expect(await listActivityAction({ ...base, orgId: "o1" })).toMatchObject(invalid);
+    expect(await listActivityAction({ ...base, from: "kemarin" })).toMatchObject(invalid);
+    expect(apiClient).not.toHaveBeenCalled();
   });
 });

@@ -36,7 +36,10 @@ const PAGE_SIZE = 10;
 const MODAL_MODES = ["create"] as const;
 
 type Secret = { title: string; label: string; value: string };
-type Confirm = { kind: "deactivate" | "grant-admin" | "revoke-admin"; user: User };
+type Confirm = {
+  kind: "deactivate" | "grant-admin" | "revoke-admin" | "reset-password";
+  user: User;
+};
 
 const CONFIRM_COPY = {
   deactivate: {
@@ -51,6 +54,12 @@ const CONFIRM_COPY = {
     destructive: false,
     describe: (name: string) =>
       `${name} akan mendapat akses penuh ke seluruh platform, termasuk semua organisasi.`,
+  },
+  "reset-password": {
+    title: "Reset password?",
+    confirmLabel: "Reset",
+    destructive: true,
+    describe: (name: string) => `Reset password ${name}? Password lama tidak berlaku lagi.`,
   },
   "revoke-admin": {
     title: "Cabut platform admin?",
@@ -127,8 +136,7 @@ export function UsersPage() {
   const setAdmin = useSetPlatformAdmin();
 
   function onAction(action: UserAction, user: User) {
-    if (action === "reset-password") reset.mutate(user.id);
-    else if (action === "activate") setActive.mutate({ id: user.id, active: true });
+    if (action === "activate") setActive.mutate({ id: user.id, active: true });
     else setConfirm({ kind: action, user });
   }
 
@@ -137,11 +145,12 @@ export function UsersPage() {
     const { kind, user } = confirm;
     const done = { onSuccess: () => setConfirm(null) };
     if (kind === "deactivate") setActive.mutate({ id: user.id, active: false }, done);
+    else if (kind === "reset-password") reset.mutate(user.id, done);
     else setAdmin.mutate({ id: user.id, on: kind === "grant-admin" }, done);
   }
 
   const total = users.data?.total ?? 0;
-  const confirmPending = setActive.isPending || setAdmin.isPending;
+  const confirmPending = setActive.isPending || setAdmin.isPending || reset.isPending;
   const copy = confirm ? CONFIRM_COPY[confirm.kind] : null;
 
   const columns: TableColumn<User>[] = [

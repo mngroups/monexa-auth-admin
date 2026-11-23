@@ -2,8 +2,8 @@
 
 import { PageHeader, Skeleton } from "@mono/ui";
 import { getErrorMessage } from "@mono/utils";
-
 import { useBranding, useRemoveLogo, useUploadLogo } from "../hooks/use-branding";
+import { PORTAL_URL_NOTE } from "../schema";
 import { LogoUploader } from "./logo-uploader";
 
 const CARD = "rounded-xl border bg-card p-5 md:p-6";
@@ -48,6 +48,7 @@ export function BrandingPage() {
             </h2>
             <LogoUploader
               currentUrl={data.logoUrl}
+              hasLogo={data.hasLogo}
               onUpload={async (file) => {
                 await upload.mutateAsync(file);
               }}
@@ -68,6 +69,8 @@ export function BrandingPage() {
                   alt="Logo di halaman login"
                   className="max-h-16 object-contain"
                 />
+              ) : data.hasLogo ? (
+                <p className="text-sm text-muted-foreground">{PORTAL_URL_NOTE}</p>
               ) : (
                 <p className="text-sm text-muted-foreground">Logo belum diatur.</p>
               )}

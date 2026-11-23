@@ -1,5 +1,6 @@
 import { PermissionsProvider } from "@mono/auth/react";
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ActiveOrgProvider } from "@/features/admin-shared/hooks/use-active-org";
@@ -43,6 +44,11 @@ function renderPage(permissions: string[]) {
     </PermissionsProvider>
   );
 }
+
+// Radix Select/Popover call these; jsdom has neither.
+Element.prototype.scrollIntoView = vi.fn();
+Element.prototype.hasPointerCapture = vi.fn(() => false);
+Element.prototype.releasePointerCapture = vi.fn();
 
 describe("ActivityPage", () => {
   beforeEach(() => {
@@ -128,5 +134,77 @@ describe("ActivityPage", () => {
     );
     renderPage([ADMIN_PERMISSIONS.activityView]);
     expect(await screen.findByText("member.create")).toBeInTheDocument();
+  });
+
+  it("sends the picked date range and org to the platform activity query", async () => {
+    activity.listActivityAction.mockResolvedValue(
+      page([entry("e1", "org.create", "2026-11-01T10:00:00Z")])
+    );
+    renderPage([ADMIN_PERMISSIONS.platformAll]);
+    await screen.findByText("org.create");
+
+    // Org filter.
+    await userEvent.click(await screen.findByRole("combobox", { name: /Organisasi/ }));
+    await userEvent.click(await screen.findByRole("option", { name: "Acme" }));
+    await waitFor(() =>
+      expect(activity.listActivityAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({ scope: "platform", orgId: "o1", page: 1 })
+      )
+    );
+
+    // Date range: two days of the visible month.
+    await userEvent.click(screen.getByRole("button", { name: /Rentang tanggal/ }));
+    const days = await screen.findAllByRole("gridcell");
+    const first = within(days[10]).getByRole("button");
+    const last = within(days[12]).getByRole("button");
+    await userEvent.click(first);
+    await userEvent.click(last);
+    const from = new Date(first.closest("[data-day]")?.getAttribute("data-day") ?? "");
+    const to = new Date(last.closest("[data-day]")?.getAttribute("data-day") ?? "");
+    from.setHours(0, 0, 0, 0);
+    to.setHours(23, 59, 59, 999);
+    await waitFor(() =>
+      expect(activity.listActivityAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          scope: "platform",
+          orgId: "o1",
+          from: from.toISOString(),
+          to: to.toISOString(),
+        })
+      )
+    );
+  });
+
+  it("goes back to page 1 only when the action filter text really changes", async () => {
+    activity.listActivityAction.mockResolvedValue(
+      ok({
+        items: [entry("e1", "member.create", "2026-11-01T10:00:00Z")],
+        page: 1,
+        pageSize: 10,
+        total: 25,
+      })
+    );
+    renderPage([ADMIN_PERMISSIONS.activityView]);
+    await screen.findByText("member.create");
+    await userEvent.click(screen.getByRole("button", { name: /2/ }));
+    await waitFor(() =>
+      expect(activity.listActivityAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 })
+      )
+    );
+
+    // Whitespace trims to the same (empty) filter: the page must stay.
+    await userEvent.type(screen.getByLabelText("Aksi"), " ");
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(activity.listActivityAction).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 2 })
+    );
+
+    await userEvent.type(screen.getByLabelText("Aksi"), "member");
+    await waitFor(() =>
+      expect(activity.listActivityAction).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 1, action: "member" })
+      )
+    );
   });
 });

@@ -1,14 +1,9 @@
 "use server";
 
-import {
-  ApiError,
-  apiEnvelope,
-  type ServerActionResult,
-  throwIfFail,
-  wrapServerAction,
-} from "@mono/auth";
+import { apiEnvelope, type ServerActionResult, throwIfFail, wrapServerAction } from "@mono/auth";
 import { z } from "zod";
 import type { PageParams } from "@/features/admin-shared/schema";
+import { idSchema, pageParamsSchema, parseInput } from "@/features/admin-shared/validation";
 import { apiClient } from "@/lib/session";
 
 import {
@@ -19,12 +14,19 @@ import {
   type AppsPage,
   type AppUpdateInput,
   appCreatedSchema,
+  appCreateInputSchema,
   appSchema,
   appsPageSchema,
+  appUpdateInputSchema,
+  permissionInputSchema,
   permissionSchema,
+  permissionStringSchema,
   permissionsSchema,
+  roleCreateInputSchema,
+  rolePermissionsSchema,
   roleSchema,
   rolesSchema,
+  roleUpdateInputSchema,
   rotatedSecretSchema,
 } from "../schema";
 
@@ -51,17 +53,17 @@ async function call<S extends z.ZodTypeAny>(
   return (res as { data: unknown }).data as z.infer<S>;
 }
 
-const id = (value: unknown, label = "Aplikasi"): string => {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new ApiError(`${label} tidak valid`, 400, 400);
-  }
-  return encodeURIComponent(value);
-};
+const id = (value: unknown): string => encodeURIComponent(parseInput(idSchema, value));
+const permissionId = (value: unknown): string =>
+  encodeURIComponent(parseInput(permissionStringSchema, value));
+const flag = (value: unknown) => parseInput(z.boolean(), value);
 
 const noContent = z.unknown().nullable().optional();
 
 export async function listAppsAction(params: PageParams): Promise<ServerActionResult<AppsPage>> {
-  return wrapServerAction(() => call("", { method: "GET", params: { ...params } }, appsPageSchema));
+  return wrapServerAction(() =>
+    call("", { method: "GET", params: { ...parseInput(pageParamsSchema, params) } }, appsPageSchema)
+  );
 }
 
 export async function getAppAction(appId: string): Promise<ServerActionResult<App>> {
@@ -75,7 +77,7 @@ export async function createAppAction(
   return wrapServerAction(async () => {
     const { clientSecret, ...app } = await call(
       "",
-      { method: "POST", body: input },
+      { method: "POST", body: parseInput(appCreateInputSchema, input) },
       appCreatedSchema
     );
     return { app, clientSecret };
@@ -87,7 +89,11 @@ export async function updateAppAction(
   values: AppUpdateInput
 ): Promise<ServerActionResult<App>> {
   return wrapServerAction(() =>
-    call(`/${id(appId)}`, { method: "PATCH", body: values }, appSchema)
+    call(
+      `/${id(appId)}`,
+      { method: "PATCH", body: parseInput(appUpdateInputSchema, values) },
+      appSchema
+    )
   );
 }
 
@@ -96,7 +102,7 @@ export async function setAppActiveAction(
   active: boolean
 ): Promise<ServerActionResult<App>> {
   return wrapServerAction(() =>
-    call(`/${id(appId)}/${active ? "activate" : "deactivate"}`, { method: "POST" }, appSchema)
+    call(`/${id(appId)}/${flag(active) ? "activate" : "deactivate"}`, { method: "POST" }, appSchema)
   );
 }
 
@@ -126,7 +132,11 @@ export async function addPermissionAction(
   values: { permission: string; description?: string }
 ): Promise<ServerActionResult<AppPermission>> {
   return wrapServerAction(() =>
-    call(`/${id(appId)}/permissions`, { method: "POST", body: values }, permissionSchema)
+    call(
+      `/${id(appId)}/permissions`,
+      { method: "POST", body: parseInput(permissionInputSchema, values) },
+      permissionSchema
+    )
   );
 }
 
@@ -136,7 +146,7 @@ export async function removePermissionAction(
 ): Promise<ServerActionResult<null>> {
   return wrapServerAction(async () => {
     await call(
-      `/${id(appId)}/permissions/${id(permission, "Permission")}`,
+      `/${id(appId)}/permissions/${permissionId(permission)}`,
       { method: "DELETE" },
       noContent
     );
@@ -153,7 +163,11 @@ export async function createRoleAction(
   values: { name: string; description?: string; permissions?: string[] }
 ): Promise<ServerActionResult<AppRole>> {
   return wrapServerAction(() =>
-    call(`/${id(appId)}/roles`, { method: "POST", body: values }, roleSchema)
+    call(
+      `/${id(appId)}/roles`,
+      { method: "POST", body: parseInput(roleCreateInputSchema, values) },
+      roleSchema
+    )
   );
 }
 
@@ -163,7 +177,11 @@ export async function updateRoleAction(
   values: { name?: string; description?: string }
 ): Promise<ServerActionResult<AppRole>> {
   return wrapServerAction(() =>
-    call(`/${id(appId)}/roles/${id(roleId, "Role")}`, { method: "PATCH", body: values }, roleSchema)
+    call(
+      `/${id(appId)}/roles/${id(roleId)}`,
+      { method: "PATCH", body: parseInput(roleUpdateInputSchema, values) },
+      roleSchema
+    )
   );
 }
 
@@ -172,7 +190,7 @@ export async function deleteRoleAction(
   roleId: string
 ): Promise<ServerActionResult<null>> {
   return wrapServerAction(async () => {
-    await call(`/${id(appId)}/roles/${id(roleId, "Role")}`, { method: "DELETE" }, noContent);
+    await call(`/${id(appId)}/roles/${id(roleId)}`, { method: "DELETE" }, noContent);
     return null;
   });
 }
@@ -184,8 +202,8 @@ export async function setRolePermissionsAction(
 ): Promise<ServerActionResult<AppRole>> {
   return wrapServerAction(() =>
     call(
-      `/${id(appId)}/roles/${id(roleId, "Role")}/permissions`,
-      { method: "PUT", body: { permissions } },
+      `/${id(appId)}/roles/${id(roleId)}/permissions`,
+      { method: "PUT", body: parseInput(rolePermissionsSchema, { permissions }) },
       roleSchema
     )
   );

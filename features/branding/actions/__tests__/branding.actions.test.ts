@@ -24,19 +24,28 @@ describe("branding actions", () => {
     const res = await actions.getBrandingAction();
     expect(res).toEqual({
       ok: true,
-      data: { slug: "acme", logoUrl: "https://auth.example.id/branding/orgs/acme/logo?v=e1" },
+      data: {
+        slug: "acme",
+        logoUrl: "https://auth.example.id/branding/orgs/acme/logo?v=e1",
+        hasLogo: true,
+      },
     });
     expect(apiClient.mock.calls[0][0]).toBe("/api/admin/org/branding");
   });
 
   it("has no logo url without a logo or without a portal url", async () => {
     apiClient.mockResolvedValue(ok({ slug: "acme", name: "Acme", logo: null }));
-    expect(await actions.getBrandingAction()).toMatchObject({ data: { logoUrl: null } });
+    expect(await actions.getBrandingAction()).toMatchObject({
+      data: { logoUrl: null, hasLogo: false },
+    });
     portal.url = null;
     apiClient.mockResolvedValue(
       ok({ slug: "acme", name: "Acme", logo: { etag: "e", updatedAt: "t" } })
     );
-    expect(await actions.getBrandingAction()).toMatchObject({ data: { logoUrl: null } });
+    // The logo exists even though its URL cannot be built.
+    expect(await actions.getBrandingAction()).toMatchObject({
+      data: { logoUrl: null, hasLogo: true },
+    });
   });
 
   it("uploads the multipart file with PUT", async () => {
@@ -53,7 +62,7 @@ describe("branding actions", () => {
 
   it("refuses an upload without a file, or a bad type/size, without calling the API", async () => {
     const empty = await actions.uploadLogoAction(new FormData());
-    expect(empty).toMatchObject({ ok: false });
+    expect(empty).toMatchObject({ ok: false, error: { message: "Data tidak valid" } });
     const gif = new FormData();
     gif.set("file", new File(["x"], "a.gif", { type: "image/gif" }));
     expect(await actions.uploadLogoAction(gif)).toMatchObject({
@@ -88,5 +97,15 @@ describe("branding actions", () => {
       updatedAt: "t",
     });
     expect(apiClient.mock.calls[0][1]).toMatchObject({ method: "PUT", body: fd });
+  });
+
+  it("refuses a FormData that is not exactly one file field", async () => {
+    const invalid = { ok: false, error: { message: "Data tidak valid" } };
+    const extra = new FormData();
+    extra.set("file", new File(["x"], "a.png", { type: "image/png" }));
+    extra.set("other", "y");
+    expect(await actions.uploadLogoAction(extra)).toMatchObject(invalid);
+    expect(await actions.uploadLogoAction("nope" as never)).toMatchObject(invalid);
+    expect(apiClient).not.toHaveBeenCalled();
   });
 });

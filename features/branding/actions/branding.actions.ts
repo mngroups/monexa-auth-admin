@@ -8,8 +8,8 @@ import {
   wrapServerAction,
 } from "@mono/auth";
 import { z } from "zod";
-
 import { apiClient } from "@/lib/session";
+import { parseLogoForm } from "../helpers/logo-form";
 import { buildLogoUrl } from "../helpers/logo-url";
 import { type Branding, brandingSchema, type LogoMeta, validateLogo } from "../schema";
 import { postLogo } from "./upload-logo";
@@ -22,14 +22,13 @@ export async function getBrandingAction(): Promise<ServerActionResult<Branding>>
     throwIfFail(res);
     const { slug, logo } = (res as { data: z.infer<typeof brandingSchema> }).data;
     const logoUrl = buildLogoUrl(slug, logo);
-    return { slug, logoUrl };
+    return { slug, logoUrl, hasLogo: logo !== null };
   });
 }
 
 export async function uploadLogoAction(formData: FormData): Promise<ServerActionResult<LogoMeta>> {
   return wrapServerAction(async () => {
-    const file = formData?.get("file");
-    if (!(file instanceof File)) throw new ApiError("Pilih file logo terlebih dahulu.", 400, 400);
+    const file = parseLogoForm(formData);
     // The BE re-checks; refusing here means a bad file is never forwarded.
     const refusal = validateLogo(file);
     if (refusal) throw new ApiError(refusal, 422, 422);

@@ -1,4 +1,4 @@
-// Rename these when you create an app from the template (see README "Use this template").
+// Display name and cookie prefix of this app; every Monexa app uses its own prefix.
 
 /** Product name shown in the browser tab and metadata. */
 export const APP_NAME = "Monexa Admin";

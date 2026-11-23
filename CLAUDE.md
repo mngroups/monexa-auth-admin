@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-Next.js 16 (App Router, Turbopack) admin UI for monexa-auth (`/v1/auth/*`, `/api/admin/*`), created from the Monexa app template. React 19, TypeScript, Tailwind CSS v4, [Biome](https://biomejs.dev) for lint + format, the **MoNo design system** (`@mono/ui`, shadcn/ui + Radix + Tailwind v4), `@mono/hooks`, `@mono/utils`, `@mono/auth` (session, API client, RBAC), [TanStack Query](https://tanstack.com/query) v5 for server state, [Zustand](https://github.com/pmndrs/zustand) for client state, [Zod](https://zod.dev) v4, [react-hook-form](https://react-hook-form.com), [Vitest](https://vitest.dev) + React Testing Library.
+Next.js 16 (App Router, Turbopack) admin UI for monexa-auth (`/v1/auth/*`, `/api/admin/*`). React 19, TypeScript, Tailwind CSS v4, [Biome](https://biomejs.dev) for lint + format, the **MoNo design system** (`@mono/ui`, shadcn/ui + Radix + Tailwind v4), `@mono/hooks`, `@mono/utils`, `@mono/auth` (session, API client, RBAC), [TanStack Query](https://tanstack.com/query) v5 for server state, [Zustand](https://github.com/pmndrs/zustand) for client state, [Zod](https://zod.dev) v4, [react-hook-form](https://react-hook-form.com), [Vitest](https://vitest.dev) + React Testing Library.
 
 **Package manager:** `pnpm@10.33.0` (lockfile committed; do **not** mix in npm/yarn).
 **Node:** 24.22.1 (`.nvmrc`, `engines`, the Dockerfile and CI via `node-version-file`; bump all of them together).
@@ -123,6 +123,7 @@ export async function getMyDataAction(params: MyParams): Promise<MyData> {
 Rules:
 
 - `"use server";` is the first statement of the file.
+- **Validate every argument with Zod before the API call** (`parseInput` in `features/admin-shared/validation.ts`): ids are `z.uuid()` (except app permission strings and client ids), page params are bounded ints, enums are enums, a logo `FormData` has exactly one `file` field. Invalid input fails with `Data tidak valid` in the action's usual result shape.
 - Always pass a Zod schema (build it with `apiEnvelope(dataSchema)` from `@mono/auth`) — never trust the BE shape.
 - `params` become the query string; bodies go through `body: JSON.stringify(...)`.
 - Turn `success: false` into a thrown `ApiError` so TanStack Query's `onError` fires.
@@ -262,8 +263,9 @@ Trunk-based: unfinished user-facing work ships behind a flag (default `false`). 
 Permissions: `lib/permissions/admin.ts::ADMIN_PERMISSIONS`; routes → `lib/permissions/routes.ts`.
 
 - **One-time secrets** (client secret, temporary password): generated or returned by a Server Action, shown only in `OneTimeSecretModal` ("Simpan sekarang — tidak akan ditampilkan lagi."), kept in component state only (mutations use `gcTime: 0` and move the value to state in `onSuccess`), dropped on close. Never in a React Query cache, the URL, Zustand, storage or `console`. Temporary passwords come from `generateTemporaryPassword()` (server-side), never typed by the admin.
-- **Self-protection:** on the signed-in user's own row (`useCurrentUserId()`), hide the role, membership, deactivate, reset-password and platform-admin actions. The BE refuses them too.
-- **`ConfirmActionModal`** guards every destructive action and names the target (remove member, deactivate, disable app for an org, delete role/permission, revoke platform admin, rotate secret).
+- **Self-protection:** on the signed-in user's own row (`useCurrentUserId()`), hide the role, membership, deactivate, reset-password and platform-admin actions. The BE refuses them too. **Fail closed:** while `useCurrentUserId()` is `null` (unknown), hide those actions on every row, and never resolve a `?modal=roles&target=` deep link.
+- **`ConfirmActionModal`** guards every destructive action and names the target (remove member, deactivate, reset password, disable app for an org, delete role/permission, revoke platform admin, rotate secret).
+- **Deep links:** a `?modal=<mode>&target=<id>` whose target isn't on the loaded list drops its params (`closeModal()`) instead of leaving a dangling `?modal=`.
 
 ## Always run lint after any change
 

@@ -11,7 +11,9 @@ import {
 } from "@mono/ui";
 import type { UseFormReturn } from "react-hook-form";
 
-import { type AppFormValues, GRANT_LABELS, GRANTS } from "../schema";
+import { type AppFormValues, GRANT_LABELS, GRANTS, TTL_LIMITS } from "../schema";
+
+const fmt = (n: number) => n.toLocaleString("id-ID");
 
 /** The fields shared by the create modal and the Pengaturan tab. */
 export function AppFormFields({
@@ -82,6 +84,11 @@ export function AppFormFields({
           inputMode="numeric"
         />
       </div>
+      <p className="text-xs text-muted-foreground">
+        Access token: {fmt(TTL_LIMITS.access.min)}–{fmt(TTL_LIMITS.access.max)} detik (bawaan{" "}
+        {fmt(TTL_LIMITS.access.default)}). Refresh token: {fmt(TTL_LIMITS.refresh.min)}–
+        {fmt(TTL_LIMITS.refresh.max)} detik (bawaan {fmt(TTL_LIMITS.refresh.default)}).
+      </p>
     </div>
   );
 }

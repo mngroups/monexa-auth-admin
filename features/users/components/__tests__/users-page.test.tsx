@@ -56,9 +56,9 @@ const siti = {
 };
 const PASSWORD = "Gen-Pass-123456";
 
-function renderPage() {
+function renderPage(userId: string | null = "u1") {
   return renderWithProviders(
-    <CurrentUserProvider userId="u1">
+    <CurrentUserProvider userId={userId}>
       <UsersPage />
     </CurrentUserProvider>
   );
@@ -247,15 +247,42 @@ describe("UsersPage", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("resets a password and shows the generated one once", async () => {
+  it("asks for confirmation naming the user before resetting a password", async () => {
     actions.resetUserPasswordAction.mockResolvedValue(ok({ temporaryPassword: PASSWORD }));
     renderPage();
     await openMenu("Budi");
     await userEvent.click(await screen.findByRole("menuitem", { name: "Reset password" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText("Reset password Budi? Password lama tidak berlaku lagi.")
+    ).toBeInTheDocument();
+    expect(actions.resetUserPasswordAction).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Reset" }));
     expect(await screen.findByDisplayValue(PASSWORD)).toBeInTheDocument();
     expect(actions.resetUserPasswordAction).toHaveBeenCalledWith("u2");
     await userEvent.click(screen.getByRole("button", { name: "Selesai" }));
     await waitFor(() => expect(screen.queryByDisplayValue(PASSWORD)).not.toBeInTheDocument());
+  });
+
+  it("does not reset when the confirmation is cancelled", async () => {
+    renderPage();
+    await openMenu("Budi");
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Reset password" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Batal" })
+    );
+    expect(actions.resetUserPasswordAction).not.toHaveBeenCalled();
+  });
+
+  it("hides every self-sensitive action on every row when the current user is unknown", async () => {
+    renderPage(null);
+    await screen.findByText("Budi");
+    expect(screen.queryByRole("button", { name: "Aksi untuk Budi" })).not.toBeInTheDocument();
+    await openMenu("Siti");
+    expect(await screen.findByRole("menuitem", { name: "Aktifkan" })).toBeInTheDocument();
+    for (const name of ["Reset password", "Jadikan platform admin", "Cabut platform admin"]) {
+      expect(screen.queryByRole("menuitem", { name })).not.toBeInTheDocument();
+    }
   });
 
   it("offers actions from the mobile card footer", async () => {

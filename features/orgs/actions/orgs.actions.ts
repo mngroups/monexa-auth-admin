@@ -9,7 +9,9 @@ import {
 } from "@mono/auth";
 import { z } from "zod";
 import type { PageParams } from "@/features/admin-shared/schema";
+import { idSchema, pageParamsSchema, parseInput } from "@/features/admin-shared/validation";
 import { postLogo } from "@/features/branding/actions/upload-logo";
+import { parseLogoForm } from "@/features/branding/helpers/logo-form";
 import { buildLogoUrl } from "@/features/branding/helpers/logo-url";
 import { type LogoMeta, validateLogo } from "@/features/branding/schema";
 import { apiClient } from "@/lib/session";
@@ -20,8 +22,10 @@ import {
   type OrgAppToggle,
   type OrgFormValues,
   type OrgsListPage,
+  type OrgUpdateValues,
   orgAppsSchema,
   orgAppToggleSchema,
+  orgFormSchema,
   orgSchema,
   orgsPageSchema,
 } from "../schema";
@@ -49,18 +53,23 @@ async function call<S extends z.ZodTypeAny>(
   return (res as { data: unknown }).data as z.infer<S>;
 }
 
-const id = (value: unknown, label = "Organisasi"): string => {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new ApiError(`${label} tidak valid`, 400, 400);
-  }
-  return encodeURIComponent(value);
-};
+const id = (value: unknown): string => encodeURIComponent(parseInput(idSchema, value));
+const flag = (value: unknown) => parseInput(z.boolean(), value);
+// PATCH takes only the fields that changed, and at least one.
+const orgUpdateSchema = orgFormSchema
+  .partial()
+  .strict()
+  .refine((v) => Object.keys(v).length > 0);
 
 export async function listOrgsAction(
   params: PageParams
 ): Promise<ServerActionResult<OrgsListPage>> {
   return wrapServerAction(async () => {
-    const page = await call("", { method: "GET", params: { ...params } }, orgsPageSchema);
+    const page = await call(
+      "",
+      { method: "GET", params: { ...parseInput(pageParamsSchema, params) } },
+      orgsPageSchema
+    );
     return {
       ...page,
       items: page.items.map((org) => ({ ...org, logoUrl: buildLogoUrl(org.slug, org.logo) })),
@@ -69,17 +78,18 @@ export async function listOrgsAction(
 }
 
 export async function createOrgAction(values: OrgFormValues): Promise<ServerActionResult<Org>> {
-  return wrapServerAction(() =>
-    call("", { method: "POST", body: { slug: values.slug, name: values.name } }, orgSchema)
-  );
+  return wrapServerAction(() => {
+    const input = parseInput(orgFormSchema, values);
+    return call("", { method: "POST", body: { slug: input.slug, name: input.name } }, orgSchema);
+  });
 }
 
 export async function updateOrgAction(
   orgId: string,
-  values: { slug?: string; name?: string }
+  values: OrgUpdateValues
 ): Promise<ServerActionResult<Org>> {
   return wrapServerAction(() =>
-    call(`/${id(orgId)}`, { method: "PATCH", body: values }, orgSchema)
+    call(`/${id(orgId)}`, { method: "PATCH", body: parseInput(orgUpdateSchema, values) }, orgSchema)
   );
 }
 
@@ -88,7 +98,7 @@ export async function setOrgActiveAction(
   active: boolean
 ): Promise<ServerActionResult<Org>> {
   return wrapServerAction(() =>
-    call(`/${id(orgId)}/${active ? "activate" : "deactivate"}`, { method: "POST" }, orgSchema)
+    call(`/${id(orgId)}/${flag(active) ? "activate" : "deactivate"}`, { method: "POST" }, orgSchema)
   );
 }
 
@@ -103,8 +113,8 @@ export async function setOrgAppAction(
 ): Promise<ServerActionResult<OrgAppToggle>> {
   return wrapServerAction(() =>
     call(
-      `/${id(orgId)}/apps/${id(appId, "Aplikasi")}`,
-      { method: enabled ? "PUT" : "DELETE" },
+      `/${id(orgId)}/apps/${id(appId)}`,
+      { method: flag(enabled) ? "PUT" : "DELETE" },
       orgAppToggleSchema
     )
   );
@@ -116,8 +126,7 @@ export async function uploadOrgLogoAction(
 ): Promise<ServerActionResult<LogoMeta>> {
   return wrapServerAction(async () => {
     const endpoint = `${BASE}/${id(orgId)}/logo`;
-    const file = formData?.get("file");
-    if (!(file instanceof File)) throw new ApiError("Pilih file logo terlebih dahulu.", 400, 400);
+    const file = parseLogoForm(formData);
     const refusal = validateLogo(file);
     if (refusal) throw new ApiError(refusal, 422, 422);
     return postLogo(endpoint, formData);

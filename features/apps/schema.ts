@@ -66,20 +66,47 @@ export type AppInput = {
 };
 export type AppUpdateInput = Omit<AppInput, "clientId">;
 
-const ttl = z
+/** The BE's bounds and defaults (monexa-auth `apps.routes.ts`). Empty = let the BE decide. */
+export const TTL_LIMITS = {
+  access: { min: 60, max: 86_400, default: 600 },
+  refresh: { min: 300, max: 31_536_000, default: 604_800 },
+} as const;
+
+const ttl = (limits: { min: number; max: number }) =>
+  z
+    .string()
+    .trim()
+    .regex(/^\d*$/, "Isi dengan angka bulat")
+    .refine(
+      (v) => v === "" || (Number(v) >= limits.min && Number(v) <= limits.max),
+      `Harus antara ${limits.min.toLocaleString("id-ID")} dan ${limits.max.toLocaleString("id-ID")} detik`
+    );
+
+/** One URI per line; blank lines and surrounding spaces are dropped. */
+export const parseLines = (text: string): string[] =>
+  text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+export const URL_LINES_MESSAGE =
+  "Setiap baris harus URL lengkap, mis. https://app.contoh.id/auth/callback";
+// The BE accepts absolute http(s) URLs only.
+const absoluteUrl = z.url({ protocol: /^https?$/ });
+const urlLines = z
   .string()
-  .trim()
-  .regex(/^\d*$/, "Isi dengan angka bulat")
-  .refine((v) => v === "" || Number(v) > 0, "Harus lebih dari 0");
+  .refine((text) => parseLines(text).every((line) => absoluteUrl.safeParse(line).success), {
+    message: URL_LINES_MESSAGE,
+  });
 
 export const appFormSchema = z.object({
   clientId: z.string().trim().min(1, "Client ID wajib diisi"),
   name: z.string().trim().min(1, "Nama wajib diisi"),
-  redirectUris: z.string(),
-  postLogoutRedirectUris: z.string(),
+  redirectUris: urlLines,
+  postLogoutRedirectUris: urlLines,
   allowedGrants: z.array(z.enum(GRANTS)).min(1, "Pilih minimal satu grant"),
-  accessTtlSeconds: ttl,
-  refreshTtlSeconds: ttl,
+  accessTtlSeconds: ttl(TTL_LIMITS.access),
+  refreshTtlSeconds: ttl(TTL_LIMITS.refresh),
 });
 export type AppFormValues = z.infer<typeof appFormSchema>;
 
@@ -89,8 +116,9 @@ export const EMPTY_APP_FORM: AppFormValues = {
   redirectUris: "",
   postLogoutRedirectUris: "",
   allowedGrants: ["authorization_code"],
-  accessTtlSeconds: "",
-  refreshTtlSeconds: "",
+  // The BE's own defaults, so the form shows what an untouched create would get.
+  accessTtlSeconds: String(TTL_LIMITS.access.default),
+  refreshTtlSeconds: String(TTL_LIMITS.refresh.default),
 };
 
 export const appToFormValues = (app: App): AppFormValues => ({
@@ -102,13 +130,6 @@ export const appToFormValues = (app: App): AppFormValues => ({
   accessTtlSeconds: String(app.accessTtlSeconds),
   refreshTtlSeconds: String(app.refreshTtlSeconds),
 });
-
-/** One URI per line; blank lines and surrounding spaces are dropped. */
-export const parseLines = (text: string): string[] =>
-  text
-    .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
 
 export function toAppInput(values: AppFormValues): AppInput {
   return {
@@ -128,8 +149,9 @@ export function toAppUpdateInput(values: AppFormValues): AppUpdateInput {
 }
 
 export const roleFormSchema = z.object({
-  name: z.string().trim().min(1, "Nama wajib diisi"),
-  description: z.string().trim(),
+  name: z.string().trim().min(1, "Nama wajib diisi").max(80, "Nama maksimal 80 karakter"),
+  // An empty string is what the BE accepts to clear a description (omitting it keeps the old one).
+  description: z.string().trim().max(300, "Deskripsi maksimal 300 karakter"),
 });
 export type RoleFormValues = z.infer<typeof roleFormSchema>;
 
@@ -138,3 +160,56 @@ export const permissionFormSchema = z.object({
   description: z.string().trim(),
 });
 export type PermissionFormValues = z.infer<typeof permissionFormSchema>;
+
+/* ---- Server Action argument schemas (the actions parse their input with these) ---- */
+
+/** `group[.resource[.sub]]:action`, as the BE's `permissionString`. */
+export const permissionStringSchema = z
+  .string()
+  .max(120)
+  .regex(/^[a-z][a-z0-9_-]*(\.[a-z][a-z0-9_-]*)*:[a-z][a-z0-9_-]*$/);
+
+const requestUrls = z.array(z.url({ protocol: /^https?$/ })).max(50);
+const appInputFields = {
+  name: z.string().trim().min(1).max(120),
+  redirectUris: requestUrls.optional(),
+  postLogoutRedirectUris: requestUrls.optional(),
+  allowedGrants: z.array(z.enum(GRANTS)).min(1).optional(),
+  accessTtlSeconds: z
+    .number()
+    .int()
+    .min(TTL_LIMITS.access.min)
+    .max(TTL_LIMITS.access.max)
+    .optional(),
+  refreshTtlSeconds: z
+    .number()
+    .int()
+    .min(TTL_LIMITS.refresh.min)
+    .max(TTL_LIMITS.refresh.max)
+    .optional(),
+};
+export const appCreateInputSchema = z
+  .object({ clientId: z.string().trim().min(1).max(63), ...appInputFields })
+  .strict();
+export const appUpdateInputSchema = z.object(appInputFields).strict();
+
+const roleDescription = z.string().trim().max(300);
+export const permissionInputSchema = z
+  .object({ permission: permissionStringSchema, description: roleDescription.optional() })
+  .strict();
+export const roleCreateInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80),
+    description: roleDescription.optional(),
+    permissions: z.array(permissionStringSchema).max(500).optional(),
+  })
+  .strict();
+export const roleUpdateInputSchema = z
+  .object({
+    name: z.string().trim().min(1).max(80).optional(),
+    description: roleDescription.optional(),
+  })
+  .strict();
+export const rolePermissionsSchema = z
+  .object({ permissions: z.array(permissionStringSchema).max(500) })
+  .strict();

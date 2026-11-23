@@ -27,6 +27,14 @@ const tokens = { access_token: "a", refresh_token: "r", expires_in: 60, refresh_
 describe("loginAction", () => {
   beforeEach(() => vi.clearAllMocks());
 
+  it("refuses invalid credentials shape with 'Data tidak valid' and never calls the BE", async () => {
+    const invalid = { success: false, message: "Data tidak valid", status: 400 };
+    expect(await loginAction({ username: "", password: "x" })).toEqual(invalid);
+    expect(await loginAction({ username: "budi" } as never)).toEqual(invalid);
+    expect(await loginAction(null as never)).toEqual(invalid);
+    expect(apiClient).not.toHaveBeenCalled();
+  });
+
   it("stores the tokens and the display username", async () => {
     apiClient.mockResolvedValue({ success: true, message: "ok", code: 200, data: tokens });
     expect(await loginAction({ username: "budi", password: "x" })).toEqual({ success: true });

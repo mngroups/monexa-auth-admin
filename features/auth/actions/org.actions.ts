@@ -1,6 +1,7 @@
 "use server";
 
 import type { SwitchOrgResult } from "@mono/auth/server";
+import { INVALID_INPUT, idSchema } from "@/features/admin-shared/validation";
 import { authFlow } from "@/lib/session";
 
 import type { Org } from "../schema";
@@ -16,8 +17,7 @@ export async function listOrgsAction(): Promise<Org[]> {
  */
 export async function switchOrgAction(orgId: string): Promise<SwitchOrgResult> {
   // A Server Action is a public endpoint: don't trust the argument's type.
-  if (typeof orgId !== "string" || orgId.length === 0) {
-    return { ok: false, message: "Organisasi tidak valid" };
-  }
-  return authFlow.switchOrg(orgId);
+  const parsed = idSchema.safeParse(orgId);
+  if (!parsed.success) return { ok: false, message: INVALID_INPUT };
+  return authFlow.switchOrg(parsed.data);
 }

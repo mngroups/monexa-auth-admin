@@ -41,7 +41,25 @@ const PAGE_SIZE = 10;
 const MODAL_MODES = ["create", "existing", "roles"] as const;
 
 type Secret = { title: string; label: string; value: string };
-type Confirm = { kind: "remove" | "deactivate"; member: Member };
+type Confirm = { kind: "remove" | "deactivate" | "reset-password"; member: Member };
+
+const CONFIRM_COPY = {
+  remove: {
+    title: "Keluarkan anggota",
+    confirmLabel: "Keluarkan",
+    describe: (name: string) => `Keluarkan ${name} dari organisasi ini?`,
+  },
+  deactivate: {
+    title: "Nonaktifkan anggota",
+    confirmLabel: "Nonaktifkan",
+    describe: (name: string) => `Nonaktifkan ${name}? Ia tidak bisa masuk sampai diaktifkan lagi.`,
+  },
+  "reset-password": {
+    title: "Reset password",
+    confirmLabel: "Reset",
+    describe: (name: string) => `Reset password ${name}? Password lama tidak berlaku lagi.`,
+  },
+} as const;
 
 function RoleBadges({ member }: { member: Member }) {
   if (member.roles.length === 0) return <span className="text-muted-foreground">-</span>;
@@ -101,9 +119,21 @@ export function MembersPage() {
 
   const members = useMembers({ page, pageSize: PAGE_SIZE, ...(q ? { q } : {}) });
   const items = members.data?.items ?? [];
+  // The roles deep link never resolves to the signed-in user (self-protection),
+  // nor while the current user is unknown (fail closed).
+  const rolesTarget = modal?.mode === "roles" ? modal.target : null;
   const rolesFor =
-    modal?.mode === "roles" ? (items.find((m) => m.userId === modal.target) ?? null) : null;
+    rolesTarget && currentUserId !== null && rolesTarget !== currentUserId
+      ? (items.find((m) => m.userId === rolesTarget) ?? null)
+      : null;
   const orgRoles = useOrgRoles(rolesFor !== null);
+
+  // A roles link that cannot resolve (not on the loaded page, own id, no target)
+  // drops its params instead of leaving a dangling ?modal=.
+  const listSettled = members.isSuccess && !members.isPlaceholderData;
+  useEffect(() => {
+    if (modal?.mode === "roles" && listSettled && rolesFor === null) closeModal();
+  }, [modal?.mode, listSettled, rolesFor, closeModal]);
 
   const create = useCreateMember((value) =>
     setSecret({ title: "Password sementara", label: "Password sementara", value })
@@ -118,7 +148,6 @@ export function MembersPage() {
 
   function onAction(action: MemberAction, member: Member) {
     if (action === "roles") openModal("roles", member.userId);
-    else if (action === "reset-password") reset.mutate(member.userId);
     else if (action === "activate") setActive.mutate({ userId: member.userId, active: true });
     else setConfirm({ kind: action, member });
   }
@@ -128,12 +157,14 @@ export function MembersPage() {
     const { kind, member } = confirm;
     const done = { onSuccess: () => setConfirm(null) };
     if (kind === "remove") remove.mutate(member.userId, done);
+    else if (kind === "reset-password") reset.mutate(member.userId, done);
     else setActive.mutate({ userId: member.userId, active: false }, done);
   }
 
   const total = members.data?.total ?? 0;
   const loading = members.isLoading;
-  const confirmPending = remove.isPending || setActive.isPending;
+  const copy = confirm ? CONFIRM_COPY[confirm.kind] : null;
+  const confirmPending = remove.isPending || setActive.isPending || reset.isPending;
 
   const columns: TableColumn<Member>[] = [
     {
@@ -247,15 +278,9 @@ export function MembersPage() {
       />
       <ConfirmActionModal
         open={confirm !== null}
-        title={confirm?.kind === "remove" ? "Keluarkan anggota" : "Nonaktifkan anggota"}
-        description={
-          confirm
-            ? confirm.kind === "remove"
-              ? `Keluarkan ${memberLabel(confirm.member)} dari organisasi ini?`
-              : `Nonaktifkan ${memberLabel(confirm.member)}? Ia tidak bisa masuk sampai diaktifkan lagi.`
-            : ""
-        }
-        confirmLabel={confirm?.kind === "remove" ? "Keluarkan" : "Nonaktifkan"}
+        title={copy?.title ?? ""}
+        description={confirm && copy ? copy.describe(memberLabel(confirm.member)) : ""}
+        confirmLabel={copy?.confirmLabel ?? ""}
         destructive
         pending={confirmPending}
         onConfirm={confirmAction}

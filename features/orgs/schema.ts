@@ -49,3 +49,6 @@ export const orgFormSchema = z.object({
     .regex(SLUG_PATTERN, "Slug hanya boleh huruf kecil, angka, dan tanda hubung (-)."),
 });
 export type OrgFormValues = z.infer<typeof orgFormSchema>;
+
+/** PATCH body: only the fields that changed. */
+export type OrgUpdateValues = Partial<OrgFormValues>;

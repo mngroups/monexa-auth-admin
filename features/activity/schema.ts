@@ -20,13 +20,17 @@ export const activityPageSchema = pageOf(activityEntrySchema);
 export type ActivityEntry = z.infer<typeof activityEntrySchema>;
 export type ActivityPage = z.infer<typeof activityPageSchema>;
 
-export type ActivityParams = {
-  scope: "org" | "platform";
-  page: number;
-  pageSize: number;
-  action?: string;
-  from?: string;
-  to?: string;
-  /** Platform scope only. */
-  orgId?: string;
-};
+export const activityParamsSchema = z
+  .object({
+    scope: z.enum(["org", "platform"]),
+    page: z.number().int().min(1).max(100_000),
+    pageSize: z.number().int().min(1).max(100),
+    action: z.string().min(1).max(100).optional(),
+    from: z.iso.datetime().optional(),
+    to: z.iso.datetime().optional(),
+    /** Platform scope only. */
+    orgId: z.uuid().optional(),
+  })
+  .strict();
+
+export type ActivityParams = z.infer<typeof activityParamsSchema>;

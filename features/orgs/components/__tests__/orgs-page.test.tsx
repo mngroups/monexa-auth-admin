@@ -1,7 +1,8 @@
+import { QueryClient } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useRouter } from "next/navigation";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-
 import { ActiveOrgProvider } from "@/features/admin-shared/hooks/use-active-org";
 import { renderWithProviders } from "@/test-utils/render";
 
@@ -53,9 +54,9 @@ const apps = [
   { appId: "a3", clientId: "c3", name: "Legacy", isActive: false, enabled: false },
 ];
 
-function renderPage() {
+function renderPage(activeOrgId = "platform") {
   return renderWithProviders(
-    <ActiveOrgProvider orgId="platform">
+    <ActiveOrgProvider orgId={activeOrgId}>
       <OrgsPage />
     </ActiveOrgProvider>
   );
@@ -176,7 +177,7 @@ describe("OrgsPage", () => {
     await waitFor(() => expect(actions.setOrgActiveAction).toHaveBeenCalledWith("o2", true));
   });
 
-  it("edits name and slug on the Info tab", async () => {
+  it("sends only the changed name on the Info tab", async () => {
     actions.updateOrgAction.mockResolvedValue(ok({ ...acme, name: "Acme Baru" }));
     renderPage();
     const dialog = await openDetail("Acme");
@@ -185,11 +186,63 @@ describe("OrgsPage", () => {
     await userEvent.type(name, "Acme Baru");
     await userEvent.click(within(dialog).getByRole("button", { name: "Simpan" }));
     await waitFor(() =>
-      expect(actions.updateOrgAction).toHaveBeenCalledWith("o1", {
-        slug: "acme",
-        name: "Acme Baru",
-      })
+      expect(actions.updateOrgAction).toHaveBeenCalledWith("o1", { name: "Acme Baru" })
     );
+  });
+
+  it("sends only the changed slug on the Info tab", async () => {
+    actions.updateOrgAction.mockResolvedValue(ok({ ...acme, slug: "acme-baru" }));
+    renderPage();
+    const dialog = await openDetail("Acme");
+    const slug = within(dialog).getByLabelText("Slug");
+    await userEvent.clear(slug);
+    await userEvent.type(slug, "acme-baru");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Simpan" }));
+    await waitFor(() =>
+      expect(actions.updateOrgAction).toHaveBeenCalledWith("o1", { slug: "acme-baru" })
+    );
+  });
+
+  it("refreshes the shell and the org switcher after renaming the ACTIVE org", async () => {
+    const invalidate = vi.spyOn(QueryClient.prototype, "invalidateQueries");
+    actions.updateOrgAction.mockResolvedValue(ok({ ...acme, name: "Acme Baru" }));
+    renderPage("o1");
+    const dialog = await openDetail("Acme");
+    const name = within(dialog).getByLabelText("Nama");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Acme Baru");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Simpan" }));
+    await waitFor(() => expect(useRouter().refresh).toHaveBeenCalled());
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["switcher-orgs"] });
+    invalidate.mockRestore();
+  });
+
+  it("does not refresh the shell after renaming another org", async () => {
+    actions.updateOrgAction.mockResolvedValue(ok({ ...acme, name: "Acme Baru" }));
+    renderPage("o2");
+    const dialog = await openDetail("Acme");
+    const name = within(dialog).getByLabelText("Nama");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Acme Baru");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Simpan" }));
+    await waitFor(() => expect(actions.updateOrgAction).toHaveBeenCalled());
+    await screen.findByText("Organisasi disimpan.");
+    expect(useRouter().refresh).not.toHaveBeenCalled();
+  });
+
+  it("clears a detail deep link whose org is not on the loaded page", async () => {
+    window.history.replaceState(null, "", "/?modal=detail&target=ghost");
+    renderPage();
+    await screen.findByText("Acme");
+    await waitFor(() => expect(window.location.search).toBe(""));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("keeps a detail deep link whose org is on the loaded page", async () => {
+    window.history.replaceState(null, "", "/?modal=detail&target=o1");
+    renderPage();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(window.location.search).toBe("?modal=detail&target=o1");
   });
 
   it("enables an app from the Aplikasi tab and labels an inactive app", async () => {

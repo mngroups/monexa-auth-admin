@@ -25,7 +25,13 @@ import {
   useUpdateOrg,
   useUploadOrgLogo,
 } from "../hooks/use-orgs";
-import { type OrgApp, type OrgFormValues, type OrgListItem, orgFormSchema } from "../schema";
+import {
+  type OrgApp,
+  type OrgFormValues,
+  type OrgListItem,
+  type OrgUpdateValues,
+  orgFormSchema,
+} from "../schema";
 
 type Tab = "info" | "apps" | "logo";
 const TABS = [
@@ -48,7 +54,13 @@ function InfoTab({ org }: { org: OrgListItem }) {
     form.reset({ name: org.name, slug: org.slug });
   }, [org.name, org.slug, form]);
 
-  const submit = form.handleSubmit((v) => update.mutate({ id: org.id, values: v }));
+  // PATCH only what changed.
+  const submit = form.handleSubmit((v) => {
+    const changed: OrgUpdateValues = {};
+    if (v.name !== org.name) changed.name = v.name;
+    if (v.slug !== org.slug) changed.slug = v.slug;
+    update.mutate({ id: org.id, values: changed });
+  });
 
   return (
     <Form {...form}>
@@ -143,6 +155,7 @@ function LogoTab({ org }: { org: OrgListItem }) {
   return (
     <LogoUploader
       currentUrl={org.logoUrl}
+      hasLogo={org.logo != null}
       onUpload={async (file) => {
         await upload.mutateAsync(file);
       }}

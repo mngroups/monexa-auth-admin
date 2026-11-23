@@ -3,10 +3,10 @@
 import { ApiError, AUTH_TIMEOUT_MS, reasonOf } from "@mono/auth";
 import { getErrorMessage } from "@mono/utils";
 import { cookies } from "next/headers";
+import { INVALID_INPUT } from "@/features/admin-shared/validation";
 import { COOKIES } from "@/lib/app-config";
 import { apiClient, setAuthCookies } from "@/lib/session";
-
-import { type LoginFormValues, loginResponseSchema } from "../schema";
+import { type LoginFormValues, loginResponseSchema, loginSchema } from "../schema";
 
 export type LoginResult =
   | { success: true }
@@ -17,7 +17,10 @@ export type LoginResult =
  * tokens never reach browser JS. Returns a result instead of throwing so the
  * BE's (Indonesian) message reaches the toast as-is.
  */
-export async function loginAction(values: LoginFormValues): Promise<LoginResult> {
+export async function loginAction(raw: LoginFormValues): Promise<LoginResult> {
+  const parsed = loginSchema.safeParse(raw);
+  if (!parsed.success) return { success: false, message: INVALID_INPUT, status: 400 };
+  const values = parsed.data;
   try {
     const res = await apiClient(
       "/v1/auth/login",

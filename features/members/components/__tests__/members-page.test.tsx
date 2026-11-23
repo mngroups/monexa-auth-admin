@@ -61,11 +61,11 @@ const siti = {
 };
 const PASSWORD = "Gen-Pass-123456";
 
-function renderPage(permissions: string[] | null = null) {
+function renderPage(permissions: string[] | null = null, userId: string | null = "u1") {
   const view = renderWithProviders(
     <PermissionsProvider permissions={permissions}>
       <ActiveOrgProvider orgId="o1">
-        <CurrentUserProvider userId="u1">
+        <CurrentUserProvider userId={userId}>
           <MembersPage />
         </CurrentUserProvider>
       </ActiveOrgProvider>
@@ -438,15 +438,32 @@ describe("MembersPage", () => {
     expect(await screen.findByText("Gagal mengaktifkan")).toBeInTheDocument();
   });
 
-  it("resets a password and shows the new one once, never caching it", async () => {
+  it("asks for confirmation naming the member before resetting a password", async () => {
     actions.resetMemberPasswordAction.mockResolvedValue(ok({ temporaryPassword: PASSWORD }));
     renderPage();
     await openMenu("Budi");
     await userEvent.click(await screen.findByRole("menuitem", { name: "Reset password" }));
+    const dialog = await screen.findByRole("dialog");
+    expect(
+      within(dialog).getByText("Reset password Budi? Password lama tidak berlaku lagi.")
+    ).toBeInTheDocument();
+    expect(actions.resetMemberPasswordAction).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Reset" }));
     expect(await screen.findByDisplayValue(PASSWORD)).toBeInTheDocument();
+    expect(actions.resetMemberPasswordAction).toHaveBeenCalledWith("u2");
     await userEvent.click(screen.getByRole("button", { name: "Selesai" }));
     await waitFor(() => expect(screen.queryByDisplayValue(PASSWORD)).not.toBeInTheDocument());
     expect(document.body.textContent).not.toContain(PASSWORD);
+  });
+
+  it("does not reset when the confirmation is cancelled", async () => {
+    renderPage();
+    await openMenu("Budi");
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Reset password" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Batal" })
+    );
+    expect(actions.resetMemberPasswordAction).not.toHaveBeenCalled();
   });
 
   it("toasts the BE message when resetting fails", async () => {
@@ -454,7 +471,37 @@ describe("MembersPage", () => {
     renderPage();
     await openMenu("Budi");
     await userEvent.click(await screen.findByRole("menuitem", { name: "Reset password" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Reset" })
+    );
     expect(await screen.findByText("Gagal reset")).toBeInTheDocument();
+  });
+
+  it("clears a roles deep link whose target is not on the loaded page", async () => {
+    window.history.replaceState(null, "", "/?modal=roles&target=ghost");
+    renderPage();
+    await screen.findByText("Budi");
+    await waitFor(() => expect(window.location.search).toBe(""));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("never opens the roles modal for the signed-in user's own id, and clears it", async () => {
+    window.history.replaceState(null, "", "/?modal=roles&target=u1");
+    renderPage();
+    await screen.findByText("Budi");
+    await waitFor(() => expect(window.location.search).toBe(""));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("hides every self-sensitive action on every row when the current user is unknown", async () => {
+    renderPage([ADMIN_PERMISSIONS.roleAssign], null);
+    await screen.findByText("Budi");
+    expect(screen.queryByRole("button", { name: "Aksi untuk Budi" })).not.toBeInTheDocument();
+    await openMenu("Siti");
+    expect(await screen.findByRole("menuitem", { name: "Aktifkan" })).toBeInTheDocument();
+    for (const name of ["Atur role", "Reset password", "Nonaktifkan", "Keluarkan dari org"]) {
+      expect(screen.queryByRole("menuitem", { name })).not.toBeInTheDocument();
+    }
   });
 
   it("offers the same row actions on mobile cards", async () => {

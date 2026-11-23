@@ -9,7 +9,7 @@ vi.mock("@/features/admin-shared/actions/temporary-password", () => ({
 const actions = await import("../users.actions");
 
 const user = {
-  id: "u2",
+  id: "22222222-2222-4222-8222-222222222222",
   email: "b@x.id",
   username: "budi",
   name: "Budi",
@@ -59,44 +59,62 @@ describe("users actions", () => {
 
   it("rejects a missing email", async () => {
     const res = await actions.createUserAction({ email: "", username: "", name: "Budi" });
-    expect(res).toMatchObject({ ok: false, error: { message: "Email tidak valid" } });
+    expect(res).toMatchObject({ ok: false, error: { message: "Data tidak valid" } });
     expect(apiClient).not.toHaveBeenCalled();
   });
 
   it("activates and deactivates", async () => {
     apiClient.mockResolvedValue(ok(user));
-    await actions.setUserActiveAction("u2", true);
-    expect(lastCall().path).toBe("/api/admin/platform/users/u2/activate");
+    await actions.setUserActiveAction("22222222-2222-4222-8222-222222222222", true);
+    expect(lastCall().path).toBe(
+      "/api/admin/platform/users/22222222-2222-4222-8222-222222222222/activate"
+    );
     expect(lastCall().init).toMatchObject({ method: "POST" });
-    await actions.setUserActiveAction("u2", false);
-    expect(lastCall().path).toBe("/api/admin/platform/users/u2/deactivate");
+    await actions.setUserActiveAction("22222222-2222-4222-8222-222222222222", false);
+    expect(lastCall().path).toBe(
+      "/api/admin/platform/users/22222222-2222-4222-8222-222222222222/deactivate"
+    );
   });
 
   it("grants and revokes platform admin", async () => {
     apiClient.mockResolvedValue(ok(user));
-    await actions.setPlatformAdminAction("u2", true);
-    expect(lastCall().path).toBe("/api/admin/platform/users/u2/platform-admin");
+    await actions.setPlatformAdminAction("22222222-2222-4222-8222-222222222222", true);
+    expect(lastCall().path).toBe(
+      "/api/admin/platform/users/22222222-2222-4222-8222-222222222222/platform-admin"
+    );
     expect(lastCall().init).toMatchObject({ method: "PUT" });
-    await actions.setPlatformAdminAction("u2", false);
+    await actions.setPlatformAdminAction("22222222-2222-4222-8222-222222222222", false);
     expect(lastCall().init).toMatchObject({ method: "DELETE" });
   });
 
   it("resets a password with a server-generated one", async () => {
     apiClient.mockResolvedValue(ok(user));
-    const res = await actions.resetUserPasswordAction("u2");
+    const res = await actions.resetUserPasswordAction("22222222-2222-4222-8222-222222222222");
     expect(res).toEqual({ ok: true, data: { temporaryPassword: "Gen-Pass-123456" } });
-    expect(lastCall().path).toBe("/api/admin/platform/users/u2/reset-password");
+    expect(lastCall().path).toBe(
+      "/api/admin/platform/users/22222222-2222-4222-8222-222222222222/reset-password"
+    );
     expect(lastCall().body).toEqual({ temporaryPassword: "Gen-Pass-123456" });
   });
 
   it("rejects an empty id", async () => {
     const res = await actions.setUserActiveAction("", true);
-    expect(res).toMatchObject({ ok: false, error: { message: "Pengguna tidak valid" } });
+    expect(res).toMatchObject({ ok: false, error: { message: "Data tidak valid" } });
   });
 
   it("wraps a BE refusal with its message", async () => {
     apiClient.mockResolvedValue({ success: false, message: "Tidak diizinkan", code: 403 });
-    const res = await actions.setPlatformAdminAction("u2", false);
+    const res = await actions.setPlatformAdminAction("22222222-2222-4222-8222-222222222222", false);
     expect(res).toMatchObject({ ok: false, error: { message: "Tidak diizinkan" } });
+  });
+
+  it("refuses invalid arguments with 'Data tidak valid' and never calls the BE", async () => {
+    const invalid = { ok: false, error: { message: "Data tidak valid" } };
+    expect(await actions.listUsersAction({ page: 0, pageSize: 10 })).toMatchObject(invalid);
+    expect(await actions.listUsersAction({ page: 1, pageSize: 1000 })).toMatchObject(invalid);
+    expect(await actions.setUserActiveAction("not-a-uuid", true)).toMatchObject(invalid);
+    expect(await actions.setPlatformAdminAction("not-a-uuid", true)).toMatchObject(invalid);
+    expect(await actions.resetUserPasswordAction("../x")).toMatchObject(invalid);
+    expect(apiClient).not.toHaveBeenCalled();
   });
 });

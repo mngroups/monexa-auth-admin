@@ -1,20 +1,16 @@
 "use server";
 
-import {
-  ApiError,
-  apiEnvelope,
-  type ServerActionResult,
-  throwIfFail,
-  wrapServerAction,
-} from "@mono/auth";
-import type { z } from "zod";
+import { apiEnvelope, type ServerActionResult, throwIfFail, wrapServerAction } from "@mono/auth";
+import { z } from "zod";
 
 import { generateTemporaryPassword } from "@/features/admin-shared/actions/temporary-password";
 import type { PageParams } from "@/features/admin-shared/schema";
+import { idSchema, pageParamsSchema, parseInput } from "@/features/admin-shared/validation";
 import { apiClient } from "@/lib/session";
 
 import {
   type CreateUserValues,
+  createUserSchema,
   type User,
   type UsersPage,
   userSchema,
@@ -44,18 +40,16 @@ async function call<S extends z.ZodTypeAny>(
   return (res as { data: unknown }).data as z.infer<S>;
 }
 
-const text = (value: unknown, label: string): string => {
-  if (typeof value !== "string" || value.length === 0) {
-    throw new ApiError(`${label} tidak valid`, 400, 400);
-  }
-  return value;
-};
-
-const idPath = (id: string) => `/${encodeURIComponent(text(id, "Pengguna"))}`;
+const idPath = (id: unknown) => `/${encodeURIComponent(parseInput(idSchema, id))}`;
+const flag = (value: unknown) => parseInput(z.boolean(), value);
 
 export async function listUsersAction(params: PageParams): Promise<ServerActionResult<UsersPage>> {
   return wrapServerAction(() =>
-    call("", { method: "GET", params: { ...params } }, usersPageSchema)
+    call(
+      "",
+      { method: "GET", params: { ...parseInput(pageParamsSchema, params) } },
+      usersPageSchema
+    )
   );
 }
 
@@ -63,15 +57,16 @@ export async function createUserAction(
   values: CreateUserValues
 ): Promise<ServerActionResult<{ user: User; temporaryPassword: string }>> {
   return wrapServerAction(async () => {
+    const input = parseInput(createUserSchema, values);
     const temporaryPassword = generateTemporaryPassword();
     const user = await call(
       "",
       {
         method: "POST",
         body: {
-          email: text(values?.email, "Email"),
-          username: values.username || undefined,
-          name: text(values.name, "Nama"),
+          email: input.email,
+          username: input.username || undefined,
+          name: input.name,
           temporaryPassword,
         },
       },
@@ -86,7 +81,11 @@ export async function setUserActiveAction(
   active: boolean
 ): Promise<ServerActionResult<User>> {
   return wrapServerAction(() =>
-    call(`${idPath(id)}/${active ? "activate" : "deactivate"}`, { method: "POST" }, userSchema)
+    call(
+      `${idPath(id)}/${flag(active) ? "activate" : "deactivate"}`,
+      { method: "POST" },
+      userSchema
+    )
   );
 }
 
@@ -95,7 +94,7 @@ export async function setPlatformAdminAction(
   on: boolean
 ): Promise<ServerActionResult<User>> {
   return wrapServerAction(() =>
-    call(`${idPath(id)}/platform-admin`, { method: on ? "PUT" : "DELETE" }, userSchema)
+    call(`${idPath(id)}/platform-admin`, { method: flag(on) ? "PUT" : "DELETE" }, userSchema)
   );
 }
 
@@ -103,12 +102,9 @@ export async function resetUserPasswordAction(
   id: string
 ): Promise<ServerActionResult<{ temporaryPassword: string }>> {
   return wrapServerAction(async () => {
+    const path = `${idPath(id)}/reset-password`;
     const temporaryPassword = generateTemporaryPassword();
-    await call(
-      `${idPath(id)}/reset-password`,
-      { method: "POST", body: { temporaryPassword } },
-      userSchema
-    );
+    await call(path, { method: "POST", body: { temporaryPassword } }, userSchema);
     return { temporaryPassword };
   });
 }

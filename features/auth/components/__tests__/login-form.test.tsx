@@ -20,12 +20,9 @@ describe("LoginForm", () => {
     loginRefusal = null;
   });
 
-  it("links to the public template overview", () => {
+  it("has no link to a public showcase page", () => {
     render(<LoginForm />);
-    expect(screen.getByRole("link", { name: "Tentang template" })).toHaveAttribute(
-      "href",
-      "/template"
-    );
+    expect(screen.queryByRole("link", { name: "Tentang template" })).not.toBeInTheDocument();
   });
 
   it("enables submit only once both fields are filled, then logs in", async () => {

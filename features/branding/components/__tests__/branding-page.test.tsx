@@ -17,8 +17,16 @@ const { BrandingPage } = await import("../branding-page");
 const ok = <T,>(data: T) => ({ ok: true as const, data });
 const fail = (message: string) => ({ ok: false as const, error: { message, status: 422 } });
 
-const withLogo = { slug: "acme", logoUrl: "https://auth.example.id/branding/orgs/acme/logo?v=e1" };
-const noLogo = { slug: "acme", logoUrl: null };
+const withLogo = {
+  slug: "acme",
+  logoUrl: "https://auth.example.id/branding/orgs/acme/logo?v=e1",
+  hasLogo: true,
+};
+const noLogo = { slug: "acme", logoUrl: null, hasLogo: false };
+// The org has a logo, but AUTH_PORTAL_URL is unset so no public URL can be built.
+const noPortal = { slug: "acme", logoUrl: null, hasLogo: true };
+
+const PORTAL_NOTE = "AUTH_PORTAL_URL belum diatur — logo tidak bisa ditampilkan.";
 
 const file = (name: string, type: string, bytes = 1000) =>
   new File([new Uint8Array(bytes)], name, { type });
@@ -50,6 +58,18 @@ describe("BrandingPage", () => {
     expect(screen.queryByRole("button", { name: "Hapus logo" })).not.toBeInTheDocument();
     expect(screen.getByText(/AUTH_ORG_HINT=acme/)).toBeInTheDocument();
     expect(screen.getByText(/5 menit/)).toBeInTheDocument();
+  });
+
+  it("keeps Hapus logo and says why the logo cannot show when AUTH_PORTAL_URL is unset", async () => {
+    actions.getBrandingAction.mockResolvedValue(ok(noPortal));
+    actions.removeLogoAction.mockResolvedValue(ok(null));
+    renderPage();
+    expect(await screen.findAllByText(PORTAL_NOTE)).not.toHaveLength(0);
+    expect(screen.queryByText(/belum ada logo/i)).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Hapus logo" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Hapus" }));
+    await waitFor(() => expect(actions.removeLogoAction).toHaveBeenCalledTimes(1));
   });
 
   it("shows the real logo limits, never the 0 MB default", async () => {

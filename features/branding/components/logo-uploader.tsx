@@ -8,7 +8,7 @@ import { useEffect, useState } from "react";
 
 import { ConfirmActionModal } from "@/features/admin-shared/components/confirm-action-modal";
 
-import { LOGO_TYPES, validateLogo } from "../schema";
+import { PORTAL_URL_NOTE, validateLogo } from "../schema";
 
 // The dropzone enforces extensions itself, with its own wording. Listing the
 // usual image extensions lets every picked image reach `transformFile`, where
@@ -19,6 +19,8 @@ const DROPZONE_EXTS = ".png,.jpg,.jpeg,.webp,.gif,.svg,.bmp,.tif,.tiff,.heic,.av
 type LogoUploaderProps = {
   /** The logo already on the server (public URL), or null. */
   currentUrl: string | null;
+  /** The org has a logo on the server, even if its public URL cannot be built (no portal URL). */
+  hasLogo: boolean;
   onUpload: (file: File) => Promise<void>;
   onRemove: () => Promise<void>;
 };
@@ -29,7 +31,7 @@ type LogoUploaderProps = {
  * handed to `onUpload`. Failures are `onUpload`/`onRemove`'s to report (toast);
  * a rejected promise just leaves the picked file in place for a retry.
  */
-export function LogoUploader({ currentUrl, onUpload, onRemove }: LogoUploaderProps) {
+export function LogoUploader({ currentUrl, hasLogo, onUpload, onRemove }: LogoUploaderProps) {
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -89,7 +91,7 @@ export function LogoUploader({ currentUrl, onUpload, onRemove }: LogoUploaderPro
         ) : (
           <div className="flex flex-col items-center gap-2 text-center text-muted-foreground">
             <ImageIcon className="size-8" aria-hidden="true" />
-            <p className="text-sm">Belum ada logo.</p>
+            <p className="text-sm">{hasLogo ? PORTAL_URL_NOTE : "Belum ada logo."}</p>
           </div>
         )}
       </div>
@@ -142,7 +144,7 @@ export function LogoUploader({ currentUrl, onUpload, onRemove }: LogoUploaderPro
         preview={renderSlot}
       />
       <div className="flex flex-wrap items-center justify-between gap-2">
-        {currentUrl ? (
+        {hasLogo ? (
           <Button
             type="button"
             variant="destructive"
@@ -189,7 +191,10 @@ export function LogoUploader({ currentUrl, onUpload, onRemove }: LogoUploaderPro
               name: shownName,
               url: shownUrl,
               size: file?.size,
-              mimeType: file?.type ?? LOGO_TYPES[0],
+              // A picked file knows its type. The saved logo may be PNG, JPEG or
+              // WebP and the portal URL has no extension, so use the neutral image
+              // type (the previewer only checks the "image/" prefix).
+              mimeType: file?.type || "image/*",
             },
           ]}
         />

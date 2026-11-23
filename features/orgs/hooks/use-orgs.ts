@@ -3,9 +3,11 @@
 import { unwrapServerAction } from "@mono/auth";
 import { getErrorMessage } from "@mono/utils";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 
 import { useActiveOrgId } from "@/features/admin-shared/hooks/use-active-org";
 import type { PageParams } from "@/features/admin-shared/schema";
+import { SWITCHER_ORGS_KEY } from "@/features/app-shell/components/org-switcher";
 import { toast } from "@/lib/toast";
 
 import {
@@ -18,19 +20,20 @@ import {
   updateOrgAction,
   uploadOrgLogoAction,
 } from "../actions/orgs.actions";
-import type { OrgFormValues } from "../schema";
+import type { OrgFormValues, OrgUpdateValues } from "../schema";
 
 export const ORGS_KEY = ["orgs"] as const;
 export const ORG_APPS_KEY = ["org-apps"] as const;
 
-export function useOrgs(params: PageParams, enabled = true) {
+/** `staleTime`: 0 for the managed list, a positive value for a picker that only needs names. */
+export function useOrgs(params: PageParams, options: { staleTime: number; enabled?: boolean }) {
   const orgId = useActiveOrgId();
   return useQuery({
     queryKey: [...ORGS_KEY, orgId, params],
     queryFn: async () => unwrapServerAction(await listOrgsAction(params)),
-    enabled,
+    enabled: options.enabled ?? true,
     placeholderData: (prev) => prev,
-    staleTime: 0,
+    staleTime: options.staleTime,
   });
 }
 
@@ -64,11 +67,26 @@ export function useCreateOrg() {
   });
 }
 
+/**
+ * Renaming the ACTIVE org also changes what the shell shows: the switcher's
+ * list is invalidated and the server-rendered layout refreshed.
+ */
 export function useUpdateOrg() {
+  const activeOrgId = useActiveOrgId();
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const options = useOrgMutationOptions("Organisasi disimpan.");
   return useMutation({
-    ...useOrgMutationOptions("Organisasi disimpan."),
-    mutationFn: async (v: { id: string; values: OrgFormValues }) =>
+    ...options,
+    mutationFn: async (v: { id: string; values: OrgUpdateValues }) =>
       unwrapServerAction(await updateOrgAction(v.id, v.values)),
+    onSuccess: async (_data, v) => {
+      await options.onSuccess();
+      if (v.id === activeOrgId) {
+        await queryClient.invalidateQueries({ queryKey: SWITCHER_ORGS_KEY });
+        router.refresh();
+      }
+    },
   });
 }
 

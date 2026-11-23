@@ -9,7 +9,10 @@ export const brandingSchema = z.object({
   logo: logoMetaSchema.nullable(),
 });
 
-export type Branding = { slug: string; logoUrl: string | null };
+/** `hasLogo` is true even when `logoUrl` is null because AUTH_PORTAL_URL is unset. */
+export type Branding = { slug: string; logoUrl: string | null; hasLogo: boolean };
+
+export const PORTAL_URL_NOTE = "AUTH_PORTAL_URL belum diatur — logo tidak bisa ditampilkan.";
 
 /** Mirrors the BE: PNG, JPEG or WebP up to 512 KB. */
 export const LOGO_TYPES = ["image/png", "image/jpeg", "image/webp"] as const;

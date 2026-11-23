@@ -68,16 +68,19 @@ export function ActivityPage() {
   const [range, setRange] = useState<DateRange | undefined>();
   const [page, setPage] = useState(1);
 
-  // Debounce the action text so typing doesn't fire one request per key.
+  // Debounce the action text so typing doesn't fire one request per key. Only a
+  // real change of the filter goes back to page 1 (not mount, not stray spaces).
   useEffect(() => {
+    const next = actionText.trim();
+    if (next === action) return;
     const timer = setTimeout(() => {
-      setAction(actionText.trim());
+      setAction(next);
       setPage(1);
     }, 250);
     return () => clearTimeout(timer);
-  }, [actionText]);
+  }, [actionText, action]);
 
-  const orgs = useOrgs({ page: 1, pageSize: 100 }, isPlatform);
+  const orgs = useOrgs({ page: 1, pageSize: 100 }, { staleTime: 30_000, enabled: isPlatform });
   const orgOptions = useMemo(
     () => [
       { label: "Semua organisasi", value: ALL_ORGS },

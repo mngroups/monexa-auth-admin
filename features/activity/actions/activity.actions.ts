@@ -1,10 +1,15 @@
 "use server";
 
 import { apiEnvelope, type ServerActionResult, throwIfFail, wrapServerAction } from "@mono/auth";
-
+import { parseInput } from "@/features/admin-shared/validation";
 import { apiClient } from "@/lib/session";
 
-import { type ActivityPage, type ActivityParams, activityPageSchema } from "../schema";
+import {
+  type ActivityPage,
+  type ActivityParams,
+  activityPageSchema,
+  activityParamsSchema,
+} from "../schema";
 
 const PATHS = {
   org: "/api/admin/org/activity",
@@ -17,7 +22,7 @@ export async function listActivityAction(
   params: ActivityParams
 ): Promise<ServerActionResult<ActivityPage>> {
   return wrapServerAction(async () => {
-    const { scope, orgId, ...rest } = params;
+    const { scope, orgId, ...rest } = parseInput(activityParamsSchema, params);
     // The org endpoint acts on the active org only: never send an org id to it.
     const query = scope === "platform" && orgId ? { ...rest, orgId } : rest;
     const res = await apiClient(

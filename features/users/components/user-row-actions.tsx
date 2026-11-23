@@ -34,7 +34,11 @@ export function UserRowActions({
   onAction: (action: UserAction, user: User) => void;
 }) {
   const currentUserId = useCurrentUserId();
+  // Fail closed: with the current user unknown, any row could be the user's own,
+  // so the self-sensitive actions (everything but "Aktifkan") are hidden everywhere.
   if (user.id === currentUserId) return null;
+  const sensitive = currentUserId !== null;
+  if (!sensitive && user.isActive) return null;
 
   return (
     <DropdownMenu>
@@ -49,19 +53,23 @@ export function UserRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {user.isPlatformAdmin ? (
-          <DropdownMenuItem onSelect={() => onAction("revoke-admin", user)}>
-            Cabut platform admin
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem onSelect={() => onAction("grant-admin", user)}>
-            Jadikan platform admin
-          </DropdownMenuItem>
+        {sensitive && (
+          <>
+            {user.isPlatformAdmin ? (
+              <DropdownMenuItem onSelect={() => onAction("revoke-admin", user)}>
+                Cabut platform admin
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem onSelect={() => onAction("grant-admin", user)}>
+                Jadikan platform admin
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem onSelect={() => onAction("reset-password", user)}>
+              Reset password
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
         )}
-        <DropdownMenuItem onSelect={() => onAction("reset-password", user)}>
-          Reset password
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
         {user.isActive ? (
           <DropdownMenuItem variant="destructive" onSelect={() => onAction("deactivate", user)}>
             Nonaktifkan

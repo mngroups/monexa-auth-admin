@@ -35,7 +35,11 @@ export function MemberRowActions({
   const { has } = usePermissions();
   // The BE answers 403 without org.role:assign; isGranted does not let platform:all cover org.*.
   const canAssignRole = has(ADMIN_PERMISSIONS.roleAssign, ADMIN_PERMISSIONS.platformAll);
+  // Fail closed: with the current user unknown, any row could be the user's own,
+  // so the self-sensitive actions (everything but "Aktifkan") are hidden everywhere.
   if (member.userId === currentUserId) return null;
+  const sensitive = currentUserId !== null;
+  if (!sensitive && member.isActive) return null;
 
   return (
     <DropdownMenu>
@@ -50,12 +54,14 @@ export function MemberRowActions({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        {canAssignRole && (
+        {sensitive && canAssignRole && (
           <DropdownMenuItem onSelect={() => onAction("roles", member)}>Atur role</DropdownMenuItem>
         )}
-        <DropdownMenuItem onSelect={() => onAction("reset-password", member)}>
-          Reset password
-        </DropdownMenuItem>
+        {sensitive && (
+          <DropdownMenuItem onSelect={() => onAction("reset-password", member)}>
+            Reset password
+          </DropdownMenuItem>
+        )}
         {member.isActive ? (
           <DropdownMenuItem onSelect={() => onAction("deactivate", member)}>
             Nonaktifkan
@@ -65,10 +71,14 @@ export function MemberRowActions({
             Aktifkan
           </DropdownMenuItem>
         )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem variant="destructive" onSelect={() => onAction("remove", member)}>
-          Keluarkan dari org
-        </DropdownMenuItem>
+        {sensitive && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={() => onAction("remove", member)}>
+              Keluarkan dari org
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   );

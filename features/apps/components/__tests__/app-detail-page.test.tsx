@@ -1,4 +1,5 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import type { QueryClient } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -142,6 +143,50 @@ describe("AppDetailPage", () => {
     await userEvent.click(screen.getByRole("button", { name: "Selesai" }));
     await waitFor(() => expect(screen.queryByDisplayValue(SECRET)).not.toBeInTheDocument());
     expect(document.body.textContent).not.toContain(SECRET);
+  });
+
+  it("keeps the rotated secret out of every query and mutation cache entry", async () => {
+    actions.rotateSecretAction.mockResolvedValue(ok({ clientSecret: SECRET }));
+    let client!: QueryClient;
+    const { TestWrapper } = await import("@/test-utils/test-wrapper");
+    const { useQueryClient } = await import("@tanstack/react-query");
+    function Grab() {
+      client = useQueryClient();
+      return null;
+    }
+    render(
+      <TestWrapper>
+        <Grab />
+        <ActiveOrgProvider orgId="platform">
+          <AppDetailPage id="a1" />
+        </ActiveOrgProvider>
+      </TestWrapper>
+    );
+    const cacheHolds = () =>
+      JSON.stringify([
+        client
+          .getQueryCache()
+          .getAll()
+          .map((q) => ({ key: q.queryKey, data: q.state.data })),
+        client
+          .getMutationCache()
+          .getAll()
+          .map((m) => ({
+            key: m.options.mutationKey,
+            data: m.state.data,
+            vars: m.state.variables,
+          })),
+      ]).includes(SECRET);
+
+    await userEvent.click(await screen.findByRole("button", { name: "Rotasi secret" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Rotasi" })
+    );
+    await screen.findByDisplayValue(SECRET);
+    expect(cacheHolds()).toBe(false);
+    await userEvent.click(screen.getByRole("button", { name: "Selesai" }));
+    await waitFor(() => expect(screen.queryByDisplayValue(SECRET)).not.toBeInTheDocument());
+    expect(cacheHolds()).toBe(false);
   });
 
   it("deactivates after a confirmation, and offers Aktifkan for an inactive app", async () => {
@@ -291,6 +336,36 @@ describe("AppDetailPage", () => {
           description: "Kasir toko",
         })
       );
+    });
+
+    it("sends an empty string to clear a role description (omitting it would keep the old one)", async () => {
+      actions.updateRoleAction.mockResolvedValue(ok(kasir));
+      renderPage();
+      await openTab("Role");
+      await userEvent.click(await screen.findByRole("button", { name: "Ubah role Kasir" }));
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.clear(within(dialog).getByLabelText("Deskripsi (opsional)"));
+      await userEvent.click(within(dialog).getByRole("button", { name: "Simpan" }));
+      await waitFor(() =>
+        expect(actions.updateRoleAction).toHaveBeenCalledWith("a1", "r1", {
+          name: "Kasir",
+          description: "",
+        })
+      );
+    });
+
+    it("refuses a role description over 300 characters", async () => {
+      renderPage();
+      await openTab("Role");
+      await userEvent.click(await screen.findByRole("button", { name: "Tambah role" }));
+      const dialog = await screen.findByRole("dialog");
+      await userEvent.type(within(dialog).getByLabelText("Nama"), "Supervisor");
+      await userEvent.click(within(dialog).getByLabelText("Deskripsi (opsional)"));
+      await userEvent.paste("x".repeat(301));
+      expect(
+        await within(dialog).findByText("Deskripsi maksimal 300 karakter")
+      ).toBeInTheDocument();
+      expect(within(dialog).getByRole("button", { name: "Simpan" })).toBeDisabled();
     });
 
     it("deletes a role after a confirmation", async () => {

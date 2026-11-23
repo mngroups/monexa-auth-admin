@@ -18,79 +18,33 @@ permissions returned by `GET /v1/auth/check` (`platform:all`, `org.member:manage
 | `/users`    | platform admin                      | All users: create, activate/deactivate, reset password, grant/revoke platform admin |
 
 Temporary passwords and client secrets are generated server-side and shown once in a modal; they are
-never stored in a cache, URL or storage. Destructive actions ask for confirmation, and your own row
-has no deactivate, reset-password or platform-admin actions.
+never stored in a cache, URL or storage. Destructive actions (including password reset) ask for
+confirmation naming the target, and your own row has no role, membership, deactivate, reset-password
+or platform-admin actions. Every Server Action validates its arguments with Zod ("Data tidak valid").
+
+## Stack
+
+Next.js 16 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS v4, the MoNo design system
+(`@mono/ui`), `@mono/hooks`, `@mono/utils`, `@mono/auth`, TanStack Query v5, Zod v4, react-hook-form,
+Biome and Vitest (80% coverage enforced). Conventions for contributors and agents are in
+[CLAUDE.md](CLAUDE.md).
 
 ## Environment
 
-| Env               | Local value             | Notes                                    |
-| ----------------- | ----------------------- | ---------------------------------------- |
-| `API_BASE_URL`    | `http://localhost:9000` | monexa-auth origin (server-only)         |
-| `AUTH_MODE`       | `sso`                   | Always `sso` for this app                |
-| `AUTH_PORTAL_URL` | `http://localhost:9000` | monexa-auth origin for the central login |
-| `AUTH_ORG_HINT`   | empty                   | Optional org slug for the login branding |
+Copy `.env.example` to `.env.local`.
+
+| Env               | Local value             | Notes                                                                     |
+| ----------------- | ----------------------- | ------------------------------------------------------------------------- |
+| `API_BASE_URL`    | `http://localhost:9000` | monexa-auth origin (server-only)                                          |
+| `AUTH_MODE`       | `sso`                   | `sso` (redirect to monexa-auth) or `credentials` (in-app form)            |
+| `AUTH_PORTAL_URL` | `http://localhost:9000` | monexa-auth origin: central login, logo URLs. Without it logos can't show |
+| `AUTH_ORG_HINT`   | empty                   | Optional org slug for the login branding                                  |
 
 ## First run
 
 1. In the monexa-auth repo run `pnpm auth:bootstrap`. It prints the admin client secret once.
 2. Put that secret in monexa-auth's `ADMIN_CLIENT_SECRET` and start monexa-auth (port 9000).
-3. Start this app with `pnpm dev` (http://localhost:3001) and sign in as the platform admin.
-
-`pnpm dev` serves on http://localhost:3001. Coverage is enforced at 80%.
-
-Before merging: `@mono/ui` is already `^0.2.2`, so no dependency bump is needed.
-
-The rest of this file is the app template's guide, kept for reference.
-
----
-
-# Monexa App Template
-
-Next.js 16 starter with the Monexa stack and conventions: App Router (Turbopack), React 19,
-TypeScript, Tailwind CSS v4, the MoNo design system (`@mono/ui`, built on shadcn/ui),
-`@mono/hooks`, `@mono/utils` and `@mono/auth`, TanStack Query v5, Zustand, Zod v4, react-hook-form,
-Biome and Vitest (80% coverage enforced).
-
-What you get out of the box:
-
-- **Auth:** two sign-in modes per app (`AUTH_MODE`: an in-app form or SSO through monexa-auth),
-  protected route group with an auth gate, logout confirmation (`/logout`, CSRF-guarded POST,
-  central sign-out in SSO mode), HttpOnly token cookies, deduped token refresh, auto-logout of a
-  dead session.
-- **Organizations:** the active org shows at the top of the shell; users with several orgs switch
-  from a dropdown without signing in again.
-- **Data layer:** every BE call is a Server Action through `apiClient` (`lib/session.ts`, built by
-  `@mono/auth`) with Zod-validated responses.
-- **RBAC:** permissions from `GET /v1/auth/check`, a route → permission map, menu filtering,
-  `<Can>` / `usePermissions`, fail-open when the check is unreachable.
-- **App shell:** the MoNo UI `AppShell` provides the responsive desktop sidebar, mobile menu and
-  bottom navigation, account menu and logout. Menu visibility follows the same route permissions.
-- **File upload:** `FileUploadDropzone` + `useUploadQueue`: presigned browser → storage upload with
-  per-file progress, retry and cancel ([guide](docs/guides/file-upload.md)).
-- **Feature flags:** typed registry plus `pnpm flag:new` / `pnpm flag:remove`.
-- **Tooling:** Biome, husky (commit-msg + lint-staged), release-it, PR checks, a standalone
-  Dockerfile.
-
-## Use this template
-
-1. Click **Use this template** on GitHub (or copy the repo), then clone it.
-2. Rename the app:
-   - `package.json` → `name`
-   - `lib/app-config.ts` → `APP_NAME` and `APP_COOKIE_PREFIX` (cookies become
-     `<prefix>_access_token`, …; give every app its own prefix)
-   - `.husky/commit-msg` banner, if you want one
-3. Registry access:
-   - Set the non-secret `GITLAB_PACKAGE_GROUP_ID` in your shell or shell profile:
-     `export GITLAB_PACKAGE_GROUP_ID="123456"` (replace with your GitLab group ID).
-   - Create a personal GitLab token with `read_package_registry` access. On macOS, save it in
-     Keychain Access as a password item named `monexa-gitlab-npm`, using the username from `id -un`
-     as the account. On other platforms, provide it through your password manager as
-     `GITLAB_NPM_TOKEN`.
-   - Install private packages with `pnpm registry:run install`. The command creates a temporary
-     npm config and removes it when pnpm exits; do not commit a token or a generated `.npmrc`.
-4. Environment: `cp .env.example .env.local` and set `API_BASE_URL`, `AUTH_MODE` and
-   `AUTH_PORTAL_URL` (see [Sign-in modes](#sign-in-modes)).
-5. Install and run:
+3. Install and start this app:
 
    ```bash
    nvm use            # Node 24.22.1 (.nvmrc)
@@ -99,66 +53,37 @@ What you get out of the box:
    pnpm dev           # http://localhost:3001
    ```
 
-6. Add your first feature (see CLAUDE.md "Adding a New Feature") and update the MoNo UI shell
-   entries in `features/app-shell/constants/menu-items.ts` and `lib/permissions/routes.ts`.
-7. CI: add the `GITLAB_NPM_TOKEN` repository secret and `GITLAB_PACKAGE_GROUP_ID` Actions variable,
-   then mark `lint`, `typecheck`, `test` and `build` as required checks on `main`.
+4. Sign in as the platform admin.
 
-## Sign-in modes
+Private `@mono/*` packages come from the GitLab Package Registry. Set `GITLAB_PACKAGE_GROUP_ID` in
+your shell and keep a `read_package_registry` token in Keychain (item `monexa-gitlab-npm`) or in
+`GITLAB_NPM_TOKEN`; `pnpm registry:run` creates a temporary npm config and removes it when pnpm
+exits. Never commit a token or a generated `.npmrc`.
 
-The BE must run `@mono/server-kit` 0.3 or later (0.3.1 for the active org in `/v1/auth/check`).
-
-| Env               | Values                           | Notes                                                                                                                                                                               |
-| ----------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AUTH_MODE`       | `credentials` (default) \| `sso` | Server-only, read at runtime: one image serves either.                                                                                                                              |
-| `AUTH_ORG_HINT`   | client org slug                  | Server-only. Shows the client's logo on the login card (sso: the BE sends the same value to monexa-auth). An app that adds a CSP `img-src` must allow the `AUTH_PORTAL_URL` origin. |
-| `AUTH_PORTAL_URL` | monexa-auth origin               | Target of the "Ganti password" link (`/account/password`).                                                                                                                          |
-
-**`credentials`:** `/login` renders the username/password form and posts to the BE through
-`loginAction`. A refusal shows the BE's message; `password_change_required` adds a "Ganti password"
-link to monexa-auth.
-
-**`sso`:**
+## Sign-in (SSO)
 
 1. `/login` redirects to `/auth/start?next=…` (unless it carries `?error=`, which renders an error
    card with "Coba lagi" instead of looping).
-2. `/auth/start` (route handler) asks the BE for the authorize URL, stores `state` + PKCE verifier +
-   `next` in a single-use HttpOnly `<prefix>_sso` cookie (path `/auth`, 10 minutes) and redirects
-   to monexa-auth.
-3. `/auth/callback` checks `state` (constant time), exchanges the code through the BE, sets the
-   session cookies and continues to `next`. Any failure goes to `/login?error=<reason>`.
-4. Logout ("Keluar") revokes the refresh token and redirects to the provider's end-session URL, so
-   the user is signed out centrally. A session expiry only clears local cookies; the next `/login`
-   signs back in silently while the central session lives.
+2. `/auth/start` asks the BE for the authorize URL, stores `state` + PKCE verifier + `next` in a
+   single-use HttpOnly cookie and redirects to monexa-auth.
+3. `/auth/callback` checks `state`, exchanges the code through the BE, sets the session cookies and
+   continues to `next`. Any failure goes to `/login?error=<reason>`.
+4. "Keluar" revokes the refresh token and redirects to the provider's end-session URL. A session
+   expiry only clears local cookies.
 
-The BE side is configured there, not here: allowed redirect URIs
-(`<app origin>/auth/callback`) and `AUTH_POST_LOGOUT_REDIRECT_URI`.
+Allowed redirect URIs (`<app origin>/auth/callback`) and `AUTH_POST_LOGOUT_REDIRECT_URI` are
+configured on the monexa-auth side. The mechanism lives in `createAuthFlow` from
+`@mono/auth/server`; `lib/session.ts` builds it as `authFlow`.
 
-The mechanism (cookie, state check, code exchange, logout, org switching) lives in
-`createAuthFlow` from `@mono/auth/server`; `lib/session.ts` builds it as `authFlow`.
-
-### Organizations
-
-- The protected layout reads the active org from `GET /v1/auth/check` (the same per-request call
-  that feeds permissions) and, only when there is one, counts the user's orgs.
-- `features/app-shell/components/org-switcher.tsx` renders in the `AppShell` `brand` slot (sidebar
-  and mobile top bar): the app name when there is no org, plain text for a single org, a dropdown
-  otherwise. The list loads when the menu opens.
-- Switching calls `switchOrgAction` (new tokens for the chosen org), then reloads `/`: every cached
-  query of the previous org is dropped and the landing route follows the new permissions.
-
-## Template showcase page
-
-The public `/template` page introduces the stack and starter features without requiring API
-configuration. Use it as a deployable preview of the template. When the application is ready,
-remove `app/template/` and the “Tentang template” link from
-`features/auth/components/login-form.tsx` (and its assertion in that component's test).
+The active org shows at the top of the shell; users with several orgs switch from a dropdown
+(`switchOrgAction` issues new tokens, then the page reloads). Renaming the active org on the
+Organizations page refreshes the shell.
 
 ## Scripts
 
 | Script                                  | What it does                                    |
 | --------------------------------------- | ----------------------------------------------- |
-| `pnpm dev`                              | Next dev server (port 3000)                     |
+| `pnpm dev`                              | Next dev server (port 3001)                     |
 | `pnpm build` / `pnpm start`             | Production build (`output: "standalone"`)       |
 | `pnpm lint` / `pnpm lint:fix`           | Biome lint + format check / autofix             |
 | `pnpm typecheck`                        | `tsc --noEmit`                                  |
@@ -174,21 +99,14 @@ Before pushing: `pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build
 ```bash
 docker build --secret id=gitlab_npm_token,env=GITLAB_NPM_TOKEN \
   --build-arg GITLAB_PACKAGE_GROUP_ID=... \
-  --build-arg NEXT_PUBLIC_FEATURE_FLAGS='{}' -t my-app .
-docker run -p 3000:3000 -e API_BASE_URL=https://api.example.com my-app
+  --build-arg NEXT_PUBLIC_FEATURE_FLAGS='{}' -t monexa-admin .
+docker run -p 3000:3000 -e API_BASE_URL=https://auth.example.com monexa-admin
 ```
 
 The token is a build secret, used only for `pnpm install` and never stored in the image.
 
-## Design system
+## Guides
 
-Read the `@mono/ui` README (or its Storybook) for the component catalog and the consumer setup
-this template already applies: CSS import order in `app/globals.css` and `server.deps.inline`
-in `vitest.config.ts`.
-
-## Private Monexa packages
-
-This app consumes `@mono/utils`, `@mono/hooks` and `@mono/ui` at `^0.2.0` and `@mono/auth` at
-`^0.3.0` from the
-private GitLab Package Registry. Local installs use `pnpm registry:run`; CI and Docker continue to
-use their existing secret-based registry configuration.
+[Development workflow](docs/guides/development-workflow.md) ·
+[Feature flags](docs/guides/feature-flags.md) · [Mobile](docs/guides/mobile-responsive.md) ·
+[File upload](docs/guides/file-upload.md)
