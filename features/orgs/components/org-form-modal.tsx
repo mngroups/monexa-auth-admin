@@ -42,7 +42,6 @@ export function OrgFormModal({
       description="Slug dipakai di URL login organisasi dan tidak boleh sama dengan organisasi lain."
       confirmLabel="Simpan"
       onConfirm={form.handleSubmit(onSubmit)}
-      onCancel={onClose}
       confirmDisabled={!(isValid && isDirty) || pending}
       loading={pending}
     >

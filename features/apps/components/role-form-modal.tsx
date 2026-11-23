@@ -44,7 +44,6 @@ export function RoleFormModal({
       description="Permission role diatur dari kartu role setelah dibuat."
       confirmLabel="Simpan"
       onConfirm={form.handleSubmit(onSubmit)}
-      onCancel={onClose}
       confirmDisabled={!(isValid && isDirty) || pending}
       loading={pending}
     >

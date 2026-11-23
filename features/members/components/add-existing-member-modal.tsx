@@ -39,7 +39,6 @@ export function AddExistingMemberModal({
       description="Masukkan email pengguna yang sudah punya akun."
       confirmLabel="Tambah"
       onConfirm={form.handleSubmit(onSubmit)}
-      onCancel={onClose}
       confirmDisabled={!(isValid && isDirty) || pending}
       loading={pending}
     >
