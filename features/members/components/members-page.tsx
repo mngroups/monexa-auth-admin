@@ -1,6 +1,7 @@
 "use client";
 
 import { useIsMobile } from "@mono/hooks";
+import { useModalParam } from "@mono/hooks/next";
 import type { TableColumn } from "@mono/ui";
 import {
   Badge,
@@ -37,6 +38,7 @@ import { MemberRolesModal } from "./member-roles-modal";
 import { type MemberAction, MemberRowActions, memberLabel } from "./member-row-actions";
 
 const PAGE_SIZE = 10;
+const MODAL_MODES = ["create", "existing", "roles"] as const;
 
 type Secret = { title: string; label: string; value: string };
 type Confirm = { kind: "remove" | "deactivate"; member: Member };
@@ -81,9 +83,9 @@ export function MembersPage() {
   const [search, setSearch] = useState("");
   const [q, setQ] = useState("");
 
-  const [createOpen, setCreateOpen] = useState(false);
-  const [existingOpen, setExistingOpen] = useState(false);
-  const [rolesFor, setRolesFor] = useState<Member | null>(null);
+  // Form modals live in the URL (?modal=create|existing|roles&target=<userId>);
+  // the confirmation and the one-time secret stay in component state.
+  const { modal, openModal, closeModal } = useModalParam(MODAL_MODES);
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   // One-time secret: component state only, dropped on close.
   const [secret, setSecret] = useState<Secret | null>(null);
@@ -98,6 +100,9 @@ export function MembersPage() {
   }, [search]);
 
   const members = useMembers({ page, pageSize: PAGE_SIZE, ...(q ? { q } : {}) });
+  const items = members.data?.items ?? [];
+  const rolesFor =
+    modal?.mode === "roles" ? (items.find((m) => m.userId === modal.target) ?? null) : null;
   const orgRoles = useOrgRoles(rolesFor !== null);
 
   const create = useCreateMember((value) =>
@@ -112,7 +117,7 @@ export function MembersPage() {
   const setRoles = useSetMemberRoles();
 
   function onAction(action: MemberAction, member: Member) {
-    if (action === "roles") setRolesFor(member);
+    if (action === "roles") openModal("roles", member.userId);
     else if (action === "reset-password") reset.mutate(member.userId);
     else if (action === "activate") setActive.mutate({ userId: member.userId, active: true });
     else setConfirm({ kind: action, member });
@@ -126,7 +131,6 @@ export function MembersPage() {
     else setActive.mutate({ userId: member.userId, active: false }, done);
   }
 
-  const items = members.data?.items ?? [];
   const total = members.data?.total ?? 0;
   const loading = members.isLoading;
   const confirmPending = remove.isPending || setActive.isPending;
@@ -157,9 +161,9 @@ export function MembersPage() {
           {
             label: "Tambah anggota lama",
             variant: "secondary",
-            onClick: () => setExistingOpen(true),
+            onClick: () => openModal("existing"),
           },
-          { label: "Tambah anggota", variant: "primary", onClick: () => setCreateOpen(true) },
+          { label: "Tambah anggota", variant: "primary", onClick: () => openModal("create") },
         ]}
       />
       <div className="max-w-sm">
@@ -220,30 +224,25 @@ export function MembersPage() {
       )}
 
       <CreateMemberModal
-        open={createOpen}
+        open={modal?.mode === "create"}
         pending={create.isPending}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={(values) => create.mutate(values, { onSuccess: () => setCreateOpen(false) })}
+        onClose={() => closeModal()}
+        onSubmit={(values) => create.mutate(values, { onSuccess: () => closeModal() })}
       />
       <AddExistingMemberModal
-        open={existingOpen}
+        open={modal?.mode === "existing"}
         pending={addExisting.isPending}
-        onClose={() => setExistingOpen(false)}
-        onSubmit={(values) =>
-          addExisting.mutate(values, { onSuccess: () => setExistingOpen(false) })
-        }
+        onClose={() => closeModal()}
+        onSubmit={(values) => addExisting.mutate(values, { onSuccess: () => closeModal() })}
       />
       <MemberRolesModal
         member={rolesFor}
         roles={orgRoles.data ?? []}
         loading={orgRoles.isLoading}
         pending={setRoles.isPending}
-        onClose={() => setRolesFor(null)}
+        onClose={() => closeModal()}
         onSave={(member, roleIds) =>
-          setRoles.mutate(
-            { userId: member.userId, roleIds },
-            { onSuccess: () => setRolesFor(null) }
-          )
+          setRoles.mutate({ userId: member.userId, roleIds }, { onSuccess: () => closeModal() })
         }
       />
       <ConfirmActionModal

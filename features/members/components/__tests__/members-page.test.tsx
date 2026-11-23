@@ -234,6 +234,62 @@ describe("MembersPage", () => {
     ).toBe(true);
   });
 
+  it("opens each form modal from the URL and clears it on close", async () => {
+    renderPage();
+    await screen.findByText("Budi");
+
+    await userEvent.click(screen.getByRole("button", { name: "Tambah anggota" }));
+    await waitFor(() => expect(window.location.search).toBe("?modal=create"));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Batal" })
+    );
+    await waitFor(() => expect(window.location.search).toBe(""));
+    await dialogClosed();
+  });
+
+  it("opens add-existing from the URL", async () => {
+    renderPage();
+    await screen.findByText("Budi");
+    await userEvent.click(screen.getByRole("button", { name: "Tambah anggota lama" }));
+    await waitFor(() => expect(window.location.search).toBe("?modal=existing"));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Batal" })
+    );
+    await waitFor(() => expect(window.location.search).toBe(""));
+  });
+
+  it("opens the roles modal from the URL with the member id as target", async () => {
+    renderPage();
+    await openMenu("Budi");
+    await userEvent.click(await screen.findByRole("menuitem", { name: "Atur role" }));
+    await waitFor(() => expect(window.location.search).toBe("?modal=roles&target=u2"));
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", { name: "Batal" })
+    );
+    await waitFor(() => expect(window.location.search).toBe(""));
+  });
+
+  it("restores a form modal from a deep link", async () => {
+    window.history.replaceState(null, "", "/?modal=roles&target=u2");
+    renderPage();
+    expect(await screen.findByRole("dialog")).toBeInTheDocument();
+    expect(screen.getByText("Atur role Budi")).toBeInTheDocument();
+  });
+
+  it("never puts the generated password in the URL", async () => {
+    actions.createMemberAction.mockResolvedValue(ok({ member: budi, temporaryPassword: PASSWORD }));
+    renderPage();
+    await screen.findByText("Budi");
+    await userEvent.click(screen.getByRole("button", { name: "Tambah anggota" }));
+    const dialog = await screen.findByRole("dialog");
+    await userEvent.type(within(dialog).getByLabelText("Email"), "baru@x.id");
+    await userEvent.type(within(dialog).getByLabelText("Nama"), "Baru");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Simpan" }));
+    await screen.findByDisplayValue(PASSWORD);
+    expect(window.location.search).toBe("");
+    expect(window.location.href).not.toContain(PASSWORD);
+  });
+
   it("toasts the BE message when creating fails", async () => {
     actions.createMemberAction.mockResolvedValue(fail("Email sudah terdaftar"));
     renderPage();
