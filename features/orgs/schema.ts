@@ -10,7 +10,6 @@ export const orgSchema = z.object({
   createdAt: z.string(),
   updatedAt: z.string(),
   logo: logoMetaSchema.nullable().optional(),
-  logoDark: logoMetaSchema.nullable().optional(),
 });
 
 export const orgsPageSchema = pageOf(orgSchema);
@@ -18,8 +17,8 @@ export const orgsPageSchema = pageOf(orgSchema);
 export type Org = z.infer<typeof orgSchema>;
 export type OrgsPage = z.infer<typeof orgsPageSchema>;
 
-/** A list row: the BE org plus its public logo URLs, built server-side. */
-export type OrgListItem = Org & { logoUrl: string | null; logoDarkUrl: string | null };
+/** A list row: the BE org plus its public logo URL, built server-side. */
+export type OrgListItem = Org & { logoUrl: string | null };
 export type OrgsListPage = Omit<OrgsPage, "items"> & { items: OrgListItem[] };
 
 export const orgAppSchema = z.object({

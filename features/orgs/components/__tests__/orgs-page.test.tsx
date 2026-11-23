@@ -38,8 +38,6 @@ const acme = {
   isActive: true,
   logo: { etag: "e1", updatedAt: "t" },
   logoUrl: "https://auth.example.id/branding/orgs/acme/logo?v=e1",
-  logoDark: { etag: "d1", updatedAt: "t" },
-  logoDarkUrl: "https://auth.example.id/branding/orgs/acme/logo?variant=dark&v=d1",
 };
 const beta = {
   ...base,
@@ -49,8 +47,6 @@ const beta = {
   isActive: false,
   logo: null,
   logoUrl: null,
-  logoDark: null,
-  logoDarkUrl: null,
 };
 const apps = [
   { appId: "a1", clientId: "c1", name: "Billing", isActive: true, enabled: true },
@@ -298,43 +294,7 @@ describe("OrgsPage", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Hapus logo" }));
     const confirm = screen.getAllByRole("dialog").at(-1) as HTMLElement;
     await userEvent.click(within(confirm).getByRole("button", { name: "Hapus" }));
-    await waitFor(() => expect(actions.removeOrgLogoAction).toHaveBeenCalledWith("o1", "default"));
-    expect(actions.removeOrgLogoAction).not.toHaveBeenCalledWith("o1", "dark");
-  });
-
-  it("shows two stacked logo slots and removes the white logo independently", async () => {
-    actions.removeOrgLogoAction.mockResolvedValue(ok(null));
-    renderPage();
-    const dialog = await openDetail("Acme");
-    await userEvent.click(within(dialog).getByRole("tab", { name: "Logo" }));
-    expect(
-      await within(dialog).findByRole("img", { name: "Logo versi putih saat ini" })
-    ).toHaveAttribute("src", acme.logoDarkUrl);
-    expect(within(dialog).getByTestId("logo-dark-dropzone")).toBeInTheDocument();
-    await userEvent.click(within(dialog).getByRole("button", { name: "Hapus logo versi putih" }));
-    const confirm = screen.getAllByRole("dialog").at(-1) as HTMLElement;
-    expect(within(confirm).getByText("Hapus logo versi putih?")).toBeInTheDocument();
-    await userEvent.click(within(confirm).getByRole("button", { name: "Hapus" }));
-    await waitFor(() => expect(actions.removeOrgLogoAction).toHaveBeenCalledWith("o1", "dark"));
-    expect(actions.removeOrgLogoAction).toHaveBeenCalledTimes(1);
-  });
-
-  it("uploads the white logo with variant dark", async () => {
-    actions.uploadOrgLogoAction.mockResolvedValue(ok({ etag: "e3", updatedAt: "t" }));
-    renderPage();
-    const dialog = await openDetail("Beta");
-    await userEvent.click(within(dialog).getByRole("tab", { name: "Logo" }));
-    const group = within(
-      await within(dialog).findByRole("group", { name: "Logo versi putih (latar gelap)" })
-    );
-    const input = group.getByTestId("logo-dark-dropzone-input");
-    await userEvent.upload(input, new File(["x"], "w.png", { type: "image/png" }), {
-      applyAccept: false,
-    });
-    await userEvent.click(await group.findByRole("button", { name: "Simpan" }));
-    await waitFor(() => expect(actions.uploadOrgLogoAction).toHaveBeenCalled());
-    expect(actions.uploadOrgLogoAction.mock.calls[0][0]).toBe("o2");
-    expect(actions.uploadOrgLogoAction.mock.calls[0][2]).toBe("dark");
+    await waitFor(() => expect(actions.removeOrgLogoAction).toHaveBeenCalledWith("o1"));
   });
 
   it("uploads a logo for the org", async () => {
@@ -342,20 +302,12 @@ describe("OrgsPage", () => {
     renderPage();
     const dialog = await openDetail("Beta");
     await userEvent.click(within(dialog).getByRole("tab", { name: "Logo" }));
-    const light = within(await within(dialog).findByRole("group", { name: "Logo (latar terang)" }));
-    const input = light.getByTestId("logo-dropzone-input");
-    await userEvent.upload(input, new File(["x"], "l.png", { type: "image/png" }), {
-      applyAccept: false,
-    });
-    await userEvent.click(await light.findByRole("button", { name: "Simpan" }));
+    const input = dialog.querySelector('input[type="file"]') as HTMLInputElement;
+    await userEvent.upload(input, new File(["x"], "l.png", { type: "image/png" }));
+    await userEvent.click(await within(dialog).findByRole("button", { name: "Simpan" }));
     await waitFor(() => expect(actions.uploadOrgLogoAction).toHaveBeenCalled());
-    const [id, fd, variant] = actions.uploadOrgLogoAction.mock.calls[0] as [
-      string,
-      FormData,
-      string,
-    ];
+    const [id, fd] = actions.uploadOrgLogoAction.mock.calls[0] as [string, FormData];
     expect(id).toBe("o2");
-    expect(variant).toBe("default");
     expect((fd.get("file") as File).name).toBe("l.png");
   });
 });

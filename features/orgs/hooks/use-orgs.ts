@@ -8,7 +8,6 @@ import { useRouter } from "next/navigation";
 import { useActiveOrgId } from "@/features/admin-shared/hooks/use-active-org";
 import type { PageParams } from "@/features/admin-shared/schema";
 import { SWITCHER_ORGS_KEY } from "@/features/app-shell/components/org-switcher";
-import type { LogoVariant } from "@/features/branding/schema";
 import { toast } from "@/lib/toast";
 
 import {
@@ -111,20 +110,20 @@ export function useSetOrgApp(targetOrgId: string) {
   });
 }
 
-export function useUploadOrgLogo(targetOrgId: string, variant: LogoVariant) {
+export function useUploadOrgLogo(targetOrgId: string) {
   return useMutation({
-    ...useOrgMutationOptions(variant === "dark" ? "Logo versi putih disimpan." : "Logo disimpan."),
+    ...useOrgMutationOptions("Logo disimpan."),
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.set("file", file);
-      return unwrapServerAction(await uploadOrgLogoAction(targetOrgId, formData, variant));
+      return unwrapServerAction(await uploadOrgLogoAction(targetOrgId, formData));
     },
   });
 }
 
-export function useRemoveOrgLogo(targetOrgId: string, variant: LogoVariant) {
+export function useRemoveOrgLogo(targetOrgId: string) {
   return useMutation({
-    ...useOrgMutationOptions(variant === "dark" ? "Logo versi putih dihapus." : "Logo dihapus."),
-    mutationFn: async () => unwrapServerAction(await removeOrgLogoAction(targetOrgId, variant)),
+    ...useOrgMutationOptions("Logo dihapus."),
+    mutationFn: async () => unwrapServerAction(await removeOrgLogoAction(targetOrgId)),
   });
 }

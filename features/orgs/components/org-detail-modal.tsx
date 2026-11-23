@@ -16,11 +16,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 
 import { ConfirmActionModal } from "@/features/admin-shared/components/confirm-action-modal";
-import {
-  DARK_LOGO_HELPER,
-  LIGHT_LOGO_HELPER,
-  LogoUploader,
-} from "@/features/branding/components/logo-uploader";
+import { LogoUploader } from "@/features/branding/components/logo-uploader";
 
 import {
   useOrgApps,
@@ -154,44 +150,19 @@ function AppsTab({ org }: { org: OrgListItem }) {
 }
 
 function LogoTab({ org }: { org: OrgListItem }) {
-  const upload = useUploadOrgLogo(org.id, "default");
-  const remove = useRemoveOrgLogo(org.id, "default");
-  const uploadDark = useUploadOrgLogo(org.id, "dark");
-  const removeDark = useRemoveOrgLogo(org.id, "dark");
+  const upload = useUploadOrgLogo(org.id);
+  const remove = useRemoveOrgLogo(org.id);
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">Logo (latar terang)</h3>
-        <LogoUploader
-          label="Logo (latar terang)"
-          helperText={LIGHT_LOGO_HELPER}
-          currentUrl={org.logoUrl}
-          hasLogo={org.logo != null}
-          onUpload={async (file) => {
-            await upload.mutateAsync(file);
-          }}
-          onRemove={async () => {
-            await remove.mutateAsync();
-          }}
-        />
-      </div>
-      <div className="space-y-2">
-        <h3 className="text-sm font-medium">Logo versi putih (latar gelap)</h3>
-        <LogoUploader
-          tone="dark"
-          label="Logo versi putih (latar gelap)"
-          helperText={DARK_LOGO_HELPER}
-          currentUrl={org.logoDarkUrl}
-          hasLogo={org.logoDark != null}
-          onUpload={async (file) => {
-            await uploadDark.mutateAsync(file);
-          }}
-          onRemove={async () => {
-            await removeDark.mutateAsync();
-          }}
-        />
-      </div>
-    </div>
+    <LogoUploader
+      currentUrl={org.logoUrl}
+      hasLogo={org.logo != null}
+      onUpload={async (file) => {
+        await upload.mutateAsync(file);
+      }}
+      onRemove={async () => {
+        await remove.mutateAsync();
+      }}
+    />
   );
 }
 
