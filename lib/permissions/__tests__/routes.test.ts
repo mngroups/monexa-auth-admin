@@ -11,8 +11,8 @@ const allowed = (path: string, granted: string[]) =>
 describe("ROUTE_PERMISSIONS", () => {
   it("maps every menu entry to its admin permissions", () => {
     expect(ROUTE_PERMISSIONS).toEqual({
-      "/members": [ADMIN_PERMISSIONS.memberManage],
-      "/branding": [ADMIN_PERMISSIONS.brandingManage],
+      "/members": [ADMIN_PERMISSIONS.memberManage, ADMIN_PERMISSIONS.platformAll],
+      "/branding": [ADMIN_PERMISSIONS.brandingManage, ADMIN_PERMISSIONS.platformAll],
       "/activity": [ADMIN_PERMISSIONS.activityView, ADMIN_PERMISSIONS.platformAll],
       "/orgs": [ADMIN_PERMISSIONS.platformAll],
       "/apps": [ADMIN_PERMISSIONS.platformAll],
@@ -39,7 +39,7 @@ describe("ROUTE_PERMISSIONS", () => {
   });
 
   it("lets a platform admin reach every platform page", () => {
-    for (const path of ["/orgs", "/apps", "/users", "/activity"]) {
+    for (const path of ["/members", "/branding", "/activity", "/orgs", "/apps", "/users"]) {
       expect(allowed(path, ["platform:all"])).toBe(true);
     }
   });

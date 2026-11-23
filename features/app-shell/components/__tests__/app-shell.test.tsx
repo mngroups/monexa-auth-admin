@@ -92,9 +92,16 @@ describe("AppShell", () => {
     expect(menuLabels()).toEqual(["Anggota", "Aktivitas"]);
   });
 
-  it("shows a platform admin the platform and activity entries", () => {
+  it("shows a platform admin every entry", () => {
     renderShell(["platform:all"]);
-    expect(menuLabels()).toEqual(["Aktivitas", "Organisasi", "Aplikasi", "Pengguna"]);
+    expect(menuLabels()).toEqual([
+      "Anggota",
+      "Branding",
+      "Aktivitas",
+      "Organisasi",
+      "Aplikasi",
+      "Pengguna",
+    ]);
   });
 
   it("hides every entry from a user without permissions", () => {

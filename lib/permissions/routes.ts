@@ -9,8 +9,8 @@ import { ADMIN_PERMISSIONS as P } from "./admin";
  * post-login landing route. Reference leaf permissions here.
  */
 export const ROUTE_PERMISSIONS: RoutePermissions = {
-  "/members": [P.memberManage],
-  "/branding": [P.brandingManage],
+  "/members": [P.memberManage, P.platformAll],
+  "/branding": [P.brandingManage, P.platformAll],
   "/activity": [P.activityView, P.platformAll],
   "/orgs": [P.platformAll],
   "/apps": [P.platformAll],
