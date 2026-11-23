@@ -116,12 +116,16 @@ export function UsersPage() {
 
   // Debounce the search so typing doesn't fire one request per key.
   useEffect(() => {
+    const next = search.trim();
+    // Only a changed search resets the page: on mount (or a whitespace-only edit) this
+    // would otherwise undo a page picked within the debounce window.
+    if (next === q) return;
     const timer = setTimeout(() => {
-      setQ(search.trim());
+      setQ(next);
       setPage(1);
     }, 250);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, q]);
 
   const users = useUsers({ page, pageSize: PAGE_SIZE, ...(q ? { q } : {}) });
   const items = users.data?.items ?? [];

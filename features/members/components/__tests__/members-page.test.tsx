@@ -1,6 +1,6 @@
 import { PermissionsProvider } from "@mono/auth/react";
 import type { QueryClient } from "@tanstack/react-query";
-import { screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -160,6 +160,18 @@ describe("MembersPage", () => {
     await waitFor(() =>
       expect(actions.listMembersAction).toHaveBeenLastCalledWith({ page: 2, pageSize: 10 })
     );
+  });
+
+  it("keeps page 2 when it is picked right after the list loads", async () => {
+    actions.listMembersAction.mockResolvedValue(
+      ok({ items: [budi], page: 1, pageSize: 10, total: 25 })
+    );
+    renderPage();
+    await screen.findByText("Budi");
+    fireEvent.click(screen.getByRole("button", { name: /2/ }));
+    // Past the 250ms search debounce: an unchanged search must not reset the page.
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(actions.listMembersAction).toHaveBeenLastCalledWith({ page: 2, pageSize: 10 });
   });
 
   it("renders the mobile card list on mobile", async () => {
