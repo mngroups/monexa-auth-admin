@@ -77,7 +77,7 @@ export default function LoginForm({
           </form>
         </Form>
         {loginRefusal?.reason === "password_change_required" && passwordChangeUrl && (
-          <p role="alert" className="mt-4 text-center text-sm text-gray-600">
+          <p role="alert" className="mt-4 text-center text-sm text-muted-foreground">
             {loginRefusal.message}{" "}
             <a href={passwordChangeUrl} className="font-medium text-primary hover:underline">
               Ganti password

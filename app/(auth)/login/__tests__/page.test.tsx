@@ -97,7 +97,7 @@ describe("/login", () => {
     vi.stubEnv("AUTH_PORTAL_URL", "https://auth.test");
     vi.stubEnv("AUTH_ORG_HINT", "pt-maju");
     await renderPage({ error: "state_mismatch" });
-    expect(screen.getByRole("img")).toHaveAttribute(
+    expect(screen.getAllByRole("img", { hidden: true })[0]).toHaveAttribute(
       "src",
       "https://auth.test/branding/orgs/pt-maju/logo"
     );

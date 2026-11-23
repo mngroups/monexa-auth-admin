@@ -32,7 +32,7 @@ export function SsoErrorCard({
     <AuthLayout logoUrl={logoUrl}>
       <AuthCard className="text-center">
         <AuthCardTitle>Gagal masuk</AuthCardTitle>
-        <p role="alert" className="mb-6 text-sm leading-6 text-gray-500">
+        <p role="alert" className="mb-6 text-sm leading-6 text-muted-foreground">
           {text}
         </p>
         {reason === "password_change_required" && passwordChangeUrl && (

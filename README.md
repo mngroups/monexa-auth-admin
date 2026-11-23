@@ -33,12 +33,12 @@ Biome and Vitest (80% coverage enforced). Conventions for contributors and agent
 
 Copy `.env.example` to `.env.local`.
 
-| Env               | Local value             | Notes                                                                     |
-| ----------------- | ----------------------- | ------------------------------------------------------------------------- |
-| `API_BASE_URL`    | `http://localhost:9000` | monexa-auth origin (server-only)                                          |
-| `AUTH_MODE`       | `sso`                   | `sso` (redirect to monexa-auth) or `credentials` (in-app form)            |
-| `AUTH_PORTAL_URL` | `http://localhost:9000` | monexa-auth origin: central login, logo URLs. Without it logos can't show |
-| `AUTH_ORG_HINT`   | empty                   | Optional org slug for the login branding                                  |
+| Env               | Local value             | Notes                                                                                                       |
+| ----------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `API_BASE_URL`    | `http://localhost:9000` | monexa-auth origin (server-only)                                                                            |
+| `AUTH_MODE`       | `sso`                   | `sso` (redirect to monexa-auth) or `credentials` (in-app form)                                              |
+| `AUTH_PORTAL_URL` | `http://localhost:9000` | monexa-auth origin: central login, logo URLs. Without it logos can't show                                   |
+| `AUTH_ORG_HINT`   | empty                   | Optional org slug: its logo at the top of the auth cards (error/logout), and its white variant in dark mode |
 
 ## First run
 
