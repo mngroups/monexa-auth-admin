@@ -58,6 +58,8 @@ Copy `.env.example` to `.env.local`.
 Private `@mono/*` packages come from the GitLab Package Registry. Set `GITLAB_PACKAGE_GROUP_ID` in
 your shell and keep a `read_package_registry` token in Keychain (item `monexa-gitlab-npm`) or in
 `GITLAB_NPM_TOKEN`; `pnpm registry:run` creates a temporary npm config and removes it when pnpm
+
+Update every `@mono/*` package to its latest release in one go with `pnpm deps:mono` (runs `pnpm update "@mono/*" --latest` through `registry:run`), then run the full check before committing.
 exits. Never commit a token or a generated `.npmrc`.
 
 ## Sign-in (SSO)
