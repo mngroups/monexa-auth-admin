@@ -12,9 +12,9 @@ registry, [`lib/feature-flags/registry.ts`](../../lib/feature-flags/registry.ts)
 
 ## Current flags
 
-| Flag          | Scope  | Source                      | Default | Gates                                  |
-| ------------- | ------ | --------------------------- | ------- | -------------------------------------- |
-| `exampleFlag` | client | `NEXT_PUBLIC_FEATURE_FLAGS` | `false` | "Ekspor" button on the `/example` page |
+| Flag          | Scope  | Source                      | Default | Gates                               |
+| ------------- | ------ | --------------------------- | ------- | ----------------------------------- |
+| `exampleFlag` | client | `NEXT_PUBLIC_FEATURE_FLAGS` | `false` | Sample client flag (registry shape) |
 
 > `pnpm flag:new` / `pnpm flag:remove` keep this table in sync with `registry.ts`.
 
@@ -33,7 +33,7 @@ registry, [`lib/feature-flags/registry.ts`](../../lib/feature-flags/registry.ts)
 ## Adding a flag
 
 ```bash
-pnpm flag:new exportButton --description "Shows the CSV export on the example list."
+pnpm flag:new exportButton --description "Shows the CSV export on a list page."
 pnpm flag:new reportsPage --scope server --description "Makes the Reports page available."
 pnpm flag:new   # no arguments: asks for name, scope and description
 ```

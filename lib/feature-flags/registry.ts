@@ -13,7 +13,7 @@ export const FEATURE_FLAGS = {
     envVar: "NEXT_PUBLIC_FEATURE_FLAGS",
     defaultValue: false,
     scope: "client",
-    description: "Shows the flag-gated export button on the example page.",
+    description: "Sample client flag showing the registry shape.",
   },
 } as const satisfies Record<string, FeatureFlagDefinition>;
 

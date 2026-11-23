@@ -3,13 +3,14 @@ import type { AppShellProps } from "@mono/ui";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { ADMIN_PERMISSIONS } from "@/lib/permissions/admin";
 import { ROUTE_PERMISSIONS } from "@/lib/permissions/routes";
 
 const logout = vi.fn();
 vi.mock("@/features/auth/hooks/use-auth", () => ({
   useAuth: () => ({ login: vi.fn(), isLoggingIn: false, logout, isLoggingOut: false }),
 }));
-let pathname = "/example";
+let pathname = "/members";
 vi.mock("next/navigation", async (importOriginal) => ({
   ...(await importOriginal<typeof import("next/navigation")>()),
   usePathname: () => pathname,
@@ -57,28 +58,48 @@ function renderShell(permissions: string[] | null) {
 describe("AppShell", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    pathname = "/example";
+    pathname = "/members";
     document.cookie = "sidebar_state=; max-age=0";
   });
 
+  const menuLabels = () =>
+    within(screen.getByRole("navigation", { name: "Menu" }))
+      .queryAllByText(/./)
+      .map((el) => el.textContent);
+
   it("renders the accessible menu, mobile tab and page", () => {
-    renderShell(["example.item:view"]);
+    renderShell(Object.values(ADMIN_PERMISSIONS));
     expect(screen.getByText("page")).toBeInTheDocument();
+    expect(menuLabels()).toEqual([
+      "Anggota",
+      "Branding",
+      "Aktivitas",
+      "Organisasi",
+      "Aplikasi",
+      "Pengguna",
+    ]);
     expect(
-      within(screen.getByRole("navigation", { name: "Menu" })).getByText("Contoh")
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByRole("navigation", { name: "Navigasi mobile" })).getByText("Contoh")
+      within(screen.getByRole("navigation", { name: "Navigasi mobile" })).getByText("Anggota")
     ).toBeInTheDocument();
     expect(screen.getByRole("navigation", { name: "Menu" }).parentElement).toHaveAttribute(
       "data-pathname",
-      "/example"
+      "/members"
     );
   });
 
-  it("hides entries the user can't open", () => {
+  it("shows an org admin only the entries their permissions open", () => {
+    renderShell(["org.member:manage", "org.activity:view"]);
+    expect(menuLabels()).toEqual(["Anggota", "Aktivitas"]);
+  });
+
+  it("shows a platform admin the platform and activity entries", () => {
+    renderShell(["platform:all"]);
+    expect(menuLabels()).toEqual(["Aktivitas", "Organisasi", "Aplikasi", "Pengguna"]);
+  });
+
+  it("hides every entry from a user without permissions", () => {
     renderShell([]);
-    expect(screen.queryByText("Contoh")).not.toBeInTheDocument();
+    expect(menuLabels()).toEqual([]);
   });
 
   it("logs out", () => {

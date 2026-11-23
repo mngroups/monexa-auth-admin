@@ -1,9 +1,32 @@
+# Monexa Admin
+
+Admin UI for [monexa-auth](../monexa-auth): org admins manage members, roles, activity and branding;
+platform admins manage orgs, apps and users. It signs in through monexa-auth (SSO) and talks to its
+`/v1/auth/*` and `/api/admin/*` endpoints through Server Actions. Menu and route access follow the
+permissions returned by `GET /v1/auth/check` (`platform:all`, `org.member:manage`, `org.role:assign`,
+`org.activity:view`, `org.branding:manage`).
+
+## Environment
+
+| Env               | Local value             | Notes                                    |
+| ----------------- | ----------------------- | ---------------------------------------- |
+| `API_BASE_URL`    | `http://localhost:9000` | monexa-auth origin (server-only)         |
+| `AUTH_MODE`       | `sso`                   | Always `sso` for this app                |
+| `AUTH_PORTAL_URL` | `http://localhost:9000` | monexa-auth origin for the central login |
+| `AUTH_ORG_HINT`   | empty                   | Optional org slug for the login branding |
+
+`pnpm dev` serves on http://localhost:3001. Coverage is enforced at 80%.
+
+The rest of this file is the app template's guide, kept for reference.
+
+---
+
 # Monexa App Template
 
 Next.js 16 starter with the Monexa stack and conventions: App Router (Turbopack), React 19,
 TypeScript, Tailwind CSS v4, the MoNo design system (`@mono/ui`, built on shadcn/ui),
 `@mono/hooks`, `@mono/utils` and `@mono/auth`, TanStack Query v5, Zustand, Zod v4, react-hook-form,
-Biome and Vitest (100% coverage enforced).
+Biome and Vitest (80% coverage enforced).
 
 What you get out of the box:
 
@@ -22,9 +45,6 @@ What you get out of the box:
 - **File upload:** `FileUploadDropzone` + `useUploadQueue`: presigned browser → storage upload with
   per-file progress, retry and cancel ([guide](docs/guides/file-upload.md)).
 - **Feature flags:** typed registry plus `pnpm flag:new` / `pnpm flag:remove`.
-- **Reference feature:** `features/example/`, a list page with table and mobile cards, skeleton,
-  empty state, a URL-backed modal form with drafts, and a flag-gated action. Copy its shape for
-  new features.
 - **Tooling:** Biome, husky (commit-msg + lint-staged), release-it, PR checks, a standalone
   Dockerfile.
 
@@ -53,12 +73,11 @@ What you get out of the box:
    nvm use            # Node 24.22.1 (.nvmrc)
    corepack enable    # pnpm 10.33.0
    pnpm registry:run install
-   pnpm dev           # http://localhost:3000
+   pnpm dev           # http://localhost:3001
    ```
 
-6. Replace `features/example/` with your first feature (see CLAUDE.md "Adding a New Feature")
-   and update the MoNo UI shell entries in `features/app-shell/constants/menu-items.ts` and
-   `lib/permissions/routes.ts`.
+6. Add your first feature (see CLAUDE.md "Adding a New Feature") and update the MoNo UI shell
+   entries in `features/app-shell/constants/menu-items.ts` and `lib/permissions/routes.ts`.
 7. CI: add the `GITLAB_NPM_TOKEN` repository secret and `GITLAB_PACKAGE_GROUP_ID` Actions variable,
    then mark `lint`, `typecheck`, `test` and `build` as required checks on `main`.
 

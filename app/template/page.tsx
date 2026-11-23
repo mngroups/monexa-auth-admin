@@ -61,9 +61,8 @@ const START_STEPS = [
     description: "Atur APP_NAME, prefix cookie, API_BASE_URL, dan akses package privat sesuai tim.",
   },
   {
-    title: "Mulai dari fitur contoh",
-    description:
-      "Jadikan features/example sebagai referensi, lalu ganti dengan domain aplikasi Anda.",
+    title: "Tambah fitur pertama",
+    description: "Buat folder features/<domain> mengikuti panduan di CLAUDE.md.",
   },
 ];
 
@@ -189,8 +188,8 @@ features/<domain>/  aksi, hooks, komponen
 lib/  session, permission, query, flags`}</code>
             </pre>
             <p className="mt-4 text-sm leading-6 text-muted-foreground">
-              Halaman <code>features/example</code> menunjukkan pola list, state loading, tampilan
-              mobile, modal form, dan feature flag.
+              Setiap domain punya folder sendiri berisi aksi server, hooks, komponen, dan skema,
+              dengan halaman route yang tetap tipis.
             </p>
           </div>
         </section>
