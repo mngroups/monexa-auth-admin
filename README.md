@@ -96,6 +96,10 @@ Organizations page refreshes the shell.
 
 Before pushing: `pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build`.
 
+## Vercel
+
+Import the repo with the **Next.js** preset. `vercel.json` installs the private `@mono/*` packages through `scripts/write-npmrc.sh`, which needs `GITLAB_NPM_TOKEN` and `GITLAB_PACKAGE_GROUP_ID` in the project env. Set `API_BASE_URL`, `AUTH_MODE=sso`, `AUTH_PORTAL_URL` (both the monexa-auth origin) and optionally `AUTH_ORG_HINT`. Deploy monexa-auth and run its bootstrap first. The full order, env and smoke test are in monexa-auth's `docs/deploy-vercel.md`.
+
 ## Docker
 
 ```bash
