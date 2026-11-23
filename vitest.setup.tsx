@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom";
 import { clearAllFormDrafts } from "@mono/hooks/form-draft";
+import { toast } from "@mono/ui";
 import { cleanup, configure } from "@testing-library/react";
 import { afterEach, vi } from "vitest";
 
@@ -37,6 +38,9 @@ afterEach(() => {
   // hook, so it would otherwise run last, and a form unmounting after
   // `clearAllFormDrafts()` saves its draft again and leaks into the next test.
   cleanup();
+  // sonner keeps toasts in a module-level store that a newly mounted <Toaster> (since
+  // 2.0.8) picks up, so a toast from one test would show up in the next.
+  toast.dismiss();
   window.history.replaceState(null, "", "/");
   clearAllFormDrafts();
 });
