@@ -61,7 +61,12 @@ export function AppDetailPage({ id }: { id: string }) {
         back={{ href: "/apps", label: "Aplikasi" }}
         linkComponent={Link}
         actions={[
-          { label: "Rotasi secret", variant: "secondary", onClick: () => setRotating(true) },
+          {
+            label: "Rotasi secret",
+            variant: "secondary",
+            hidden: isAdminApp,
+            onClick: () => setRotating(true),
+          },
           data.isActive
             ? {
                 label: "Nonaktifkan",
@@ -76,6 +81,13 @@ export function AppDetailPage({ id }: { id: string }) {
           {data.isActive ? "Aktif" : "Nonaktif"}
         </StatusLabel>
       </PageHeader>
+
+      {isAdminApp && (
+        <p className="text-sm text-muted-foreground">
+          Secret aplikasi admin dirotasi lewat `pnpm auth:bootstrap` di monexa-auth
+          (BOOTSTRAP_ROTATE_ADMIN_SECRET=true).
+        </p>
+      )}
 
       <TabBar items={TABS} active={tab} onChange={setTab} aria-label="Detail aplikasi" />
       {tab === "settings" && <SettingsTab app={data} />}

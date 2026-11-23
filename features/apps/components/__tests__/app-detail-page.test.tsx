@@ -167,7 +167,18 @@ describe("AppDetailPage", () => {
     renderPage("a0");
     await screen.findByRole("heading", { name: "Admin" });
     expect(screen.queryByRole("button", { name: "Nonaktifkan" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Rotasi secret" })).toBeInTheDocument();
+  });
+
+  it("never offers secret rotation for the admin app, and says how to do it", async () => {
+    actions.getAppAction.mockResolvedValue(ok(adminApp));
+    renderPage("a0");
+    await screen.findByRole("heading", { name: "Admin" });
+    expect(screen.queryByRole("button", { name: "Rotasi secret" })).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Secret aplikasi admin dirotasi lewat `pnpm auth:bootstrap` di monexa-auth (BOOTSTRAP_ROTATE_ADMIN_SECRET=true)."
+      )
+    ).toBeInTheDocument();
   });
 
   describe("Permission tab", () => {

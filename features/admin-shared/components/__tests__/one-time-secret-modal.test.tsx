@@ -43,6 +43,25 @@ describe("OneTimeSecretModal", () => {
     expect(await screen.findByText("Disalin")).toBeInTheDocument();
   });
 
+  it("tells the admin to copy manually when the clipboard rejects", async () => {
+    writeText.mockRejectedValueOnce(new Error("denied"));
+    renderWithProviders(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: /salin/i }));
+    expect(
+      await screen.findByText("Gagal menyalin. Salin manual dari kolom di atas.")
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Disalin")).not.toBeInTheDocument();
+  });
+
+  it("tells the admin to copy manually when the clipboard API is missing", async () => {
+    Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true });
+    renderWithProviders(<Harness />);
+    fireEvent.click(screen.getByRole("button", { name: /salin/i }));
+    expect(
+      await screen.findByText("Gagal menyalin. Salin manual dari kolom di atas.")
+    ).toBeInTheDocument();
+  });
+
   it("is dropped by the parent after closing", async () => {
     renderWithProviders(<Harness />);
     fireEvent.click(screen.getByRole("button", { name: "Selesai" }));

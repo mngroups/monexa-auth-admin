@@ -22,8 +22,13 @@ export function OneTimeSecretModal({
   onClose,
 }: OneTimeSecretModalProps) {
   async function copy() {
-    await navigator.clipboard.writeText(secret);
-    toast.success("Disalin");
+    try {
+      // `navigator.clipboard` is missing on non-HTTPS hosts; either way the admin must copy by hand.
+      await navigator.clipboard.writeText(secret);
+      toast.success("Disalin");
+    } catch {
+      toast.error("Gagal menyalin. Salin manual dari kolom di atas.");
+    }
   }
 
   return (

@@ -1,3 +1,4 @@
+import { PermissionsProvider } from "@mono/auth/react";
 import type { QueryClient } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -5,6 +6,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ActiveOrgProvider } from "@/features/admin-shared/hooks/use-active-org";
 import { CurrentUserProvider } from "@/features/admin-shared/hooks/use-current-user";
+import { ADMIN_PERMISSIONS } from "@/lib/permissions/admin";
 import { renderWithProviders } from "@/test-utils/render";
 
 const mobile = vi.hoisted(() => ({ value: false }));
@@ -59,13 +61,15 @@ const siti = {
 };
 const PASSWORD = "Gen-Pass-123456";
 
-function renderPage() {
+function renderPage(permissions: string[] | null = null) {
   const view = renderWithProviders(
-    <ActiveOrgProvider orgId="o1">
-      <CurrentUserProvider userId="u1">
-        <MembersPage />
-      </CurrentUserProvider>
-    </ActiveOrgProvider>
+    <PermissionsProvider permissions={permissions}>
+      <ActiveOrgProvider orgId="o1">
+        <CurrentUserProvider userId="u1">
+          <MembersPage />
+        </CurrentUserProvider>
+      </ActiveOrgProvider>
+    </PermissionsProvider>
   );
   return view;
 }
@@ -129,6 +133,22 @@ describe("MembersPage", () => {
       expect(actions.listMembersAction).toHaveBeenLastCalledWith({ page: 1, pageSize: 10, q: "bu" })
     );
   });
+
+  it("hides 'Atur role' from a user who can only manage members", async () => {
+    renderPage([ADMIN_PERMISSIONS.memberManage]);
+    await openMenu("Budi");
+    expect(await screen.findByRole("menuitem", { name: "Reset password" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Atur role" })).not.toBeInTheDocument();
+  });
+
+  it.each([ADMIN_PERMISSIONS.roleAssign, ADMIN_PERMISSIONS.platformAll])(
+    "shows 'Atur role' with %s",
+    async (permission) => {
+      renderPage([ADMIN_PERMISSIONS.memberManage, permission]);
+      await openMenu("Budi");
+      expect(await screen.findByRole("menuitem", { name: "Atur role" })).toBeInTheDocument();
+    }
+  );
 
   it("pages through the list", async () => {
     actions.listMembersAction.mockResolvedValue(
