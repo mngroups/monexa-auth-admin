@@ -2,6 +2,7 @@ import { PermissionsProvider } from "@mono/auth/react";
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
+import { ActiveOrgProvider } from "@/features/admin-shared/hooks/use-active-org";
 import { CurrentUserProvider } from "@/features/admin-shared/hooks/use-current-user";
 import { AppShell } from "@/features/app-shell/components/app-shell";
 import { RestrictedPage } from "@/features/app-shell/components/restricted-page";
@@ -39,11 +40,13 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   return (
     <PermissionsProvider permissions={permissions} routes={ROUTE_PERMISSIONS}>
       <CurrentUserProvider userId={userId}>
-        <AppShell defaultOpen={defaultOpen} userName={userName} org={org} orgCount={orgCount}>
-          <ProtectedPage>
-            {allowed ? children : <RestrictedPage variant={hasAnyMenu ? "route" : "account"} />}
-          </ProtectedPage>
-        </AppShell>
+        <ActiveOrgProvider orgId={org?.id ?? null}>
+          <AppShell defaultOpen={defaultOpen} userName={userName} org={org} orgCount={orgCount}>
+            <ProtectedPage>
+              {allowed ? children : <RestrictedPage variant={hasAnyMenu ? "route" : "account"} />}
+            </ProtectedPage>
+          </AppShell>
+        </ActiveOrgProvider>
       </CurrentUserProvider>
     </PermissionsProvider>
   );

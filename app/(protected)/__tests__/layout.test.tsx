@@ -1,5 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useActiveOrgId } from "@/features/admin-shared/hooks/use-active-org";
 import { useCurrentUserId } from "@/features/admin-shared/hooks/use-current-user";
 
 const cookieGet = vi.fn();
@@ -68,6 +69,15 @@ describe("protected layout", () => {
     }
     render(await ProtectedLayout({ children: <WhoAmI /> }));
     expect(screen.getByText("me:u1")).toBeInTheDocument();
+  });
+
+  it("provides the active org id to the pages", async () => {
+    headersGet.mockReturnValue(null);
+    function WhichOrg() {
+      return <p>{`org:${useActiveOrgId()}`}</p>;
+    }
+    render(await ProtectedLayout({ children: <WhichOrg /> }));
+    expect(screen.getByText("org:o1")).toBeInTheDocument();
   });
 
   it("renders an allowed page", async () => {
