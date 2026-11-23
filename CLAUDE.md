@@ -71,6 +71,7 @@ Shared UI, hooks and helpers are **not** in this repo: they come from `@mono/ui`
 | `POST /logout/confirm`, `logoutAction` | revoke + clear       | also redirect to the provider's end-session URL (explicit logout only; a session expiry stays local) |
 - The SSO state/PKCE logic lives in `@mono/auth` (`createAuthFlow`). Fix it there, not here.
 - Refusal reasons come from the BE as `data.reason` (`reasonOf` from `@mono/auth`). Show the BE's message; on `/login?error=` only the known kit reasons may show `message`, everything else gets the generic copy.
+- **CSP is set per request in `proxy.ts`** (`lib/security-headers.ts`), not in `next.config.mjs`: in sso mode `form-action` must also allow the `AUTH_PORTAL_URL` origin, because browsers apply it to the redirects after a form submit (the logout forms end at monexa-auth). Never add a second, static CSP header.
 - Link to route handlers with a plain `<a>` (inside `Button asChild`), never `next/link`: a prefetch would run the handler.
 - Auth gating (`ProtectedPage`) is UX only; the BE re-checks every request.
 
