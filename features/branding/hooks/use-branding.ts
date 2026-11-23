@@ -8,6 +8,7 @@ import { useActiveOrgId } from "@/features/admin-shared/hooks/use-active-org";
 import { toast } from "@/lib/toast";
 
 import { getBrandingAction, removeLogoAction, uploadLogoAction } from "../actions/branding.actions";
+import type { LogoVariant } from "../schema";
 
 export const BRANDING_KEY = ["branding"] as const;
 
@@ -32,22 +33,26 @@ function useBrandingMutationOptions(successMessage: string) {
   };
 }
 
-export function useUploadLogo() {
-  const options = useBrandingMutationOptions("Logo disimpan.");
+export function useUploadLogo(variant: LogoVariant) {
+  const options = useBrandingMutationOptions(
+    variant === "dark" ? "Logo versi putih disimpan." : "Logo disimpan."
+  );
   return useMutation({
     ...options,
     mutationFn: async (file: File) => {
       const formData = new FormData();
       formData.set("file", file);
-      return unwrapServerAction(await uploadLogoAction(formData));
+      return unwrapServerAction(await uploadLogoAction(formData, variant));
     },
   });
 }
 
-export function useRemoveLogo() {
-  const options = useBrandingMutationOptions("Logo dihapus.");
+export function useRemoveLogo(variant: LogoVariant) {
+  const options = useBrandingMutationOptions(
+    variant === "dark" ? "Logo versi putih dihapus." : "Logo dihapus."
+  );
   return useMutation({
     ...options,
-    mutationFn: async () => unwrapServerAction(await removeLogoAction()),
+    mutationFn: async () => unwrapServerAction(await removeLogoAction(variant)),
   });
 }

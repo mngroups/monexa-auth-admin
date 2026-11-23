@@ -7,10 +7,21 @@ export const brandingSchema = z.object({
   slug: z.string(),
   name: z.string(),
   logo: logoMetaSchema.nullable(),
+  logoDark: logoMetaSchema.nullable().optional(),
 });
 
-/** `hasLogo` is true even when `logoUrl` is null because AUTH_PORTAL_URL is unset. */
-export type Branding = { slug: string; logoUrl: string | null; hasLogo: boolean };
+/** `default` is the colour logo for light backgrounds; `dark` the white version for dark ones. */
+export const logoVariantSchema = z.enum(["default", "dark"]);
+export type LogoVariant = z.infer<typeof logoVariantSchema>;
+
+/** `hasLogo`/`hasLogoDark` stay true even when the URL is null because AUTH_PORTAL_URL is unset. */
+export type Branding = {
+  slug: string;
+  logoUrl: string | null;
+  logoDarkUrl: string | null;
+  hasLogo: boolean;
+  hasLogoDark: boolean;
+};
 
 export const PORTAL_URL_NOTE = "AUTH_PORTAL_URL belum diatur — logo tidak bisa ditampilkan.";
 

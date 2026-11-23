@@ -4,7 +4,7 @@ import { apiEnvelope, throwIfFail } from "@mono/auth";
 
 import { apiClient } from "@/lib/session";
 
-import { type LogoMeta, logoMetaSchema } from "../schema";
+import { type LogoMeta, type LogoVariant, logoMetaSchema } from "../schema";
 
 const logoResponse = apiEnvelope(logoMetaSchema);
 
@@ -16,8 +16,16 @@ const logoResponse = apiEnvelope(logoMetaSchema);
  * Server-only and deliberately not a "use server" module: callers (Server
  * Actions) wrap it, so the endpoint can never be chosen from the browser.
  */
-export async function postLogo(endpoint: string, formData: FormData): Promise<LogoMeta> {
-  const res = await apiClient(endpoint, { method: "PUT", body: formData }, logoResponse);
+export async function postLogo(
+  endpoint: string,
+  formData: FormData,
+  variant: LogoVariant
+): Promise<LogoMeta> {
+  const res = await apiClient(
+    endpoint,
+    { method: "PUT", body: formData, params: { variant } },
+    logoResponse
+  );
   throwIfFail(res);
   return (res as { data: LogoMeta }).data;
 }
