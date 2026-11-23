@@ -31,6 +31,13 @@ describe("permissions/server", () => {
     expect(await resolveLandingRoute()).toBe("/members");
   });
 
+  it("gates an app detail route through the /apps prefix", async () => {
+    getAuthCheckAction.mockResolvedValue({ user_id: "u1", permissions: ["org.member:manage"] });
+    expect(await canAccessRoute("/apps/abc")).toBe(false);
+    getAuthCheckAction.mockResolvedValue({ user_id: "u1", permissions: ["platform:all"] });
+    expect(await canAccessRoute("/apps/abc")).toBe(true);
+  });
+
   it("blocks a mapped route without its permission", async () => {
     getAuthCheckAction.mockResolvedValue({ user_id: "u1", permissions: [] });
     expect(await canAccessRoute("/members")).toBe(false);

@@ -43,4 +43,10 @@ describe("ROUTE_PERMISSIONS", () => {
       expect(allowed(path, ["platform:all"])).toBe(true);
     }
   });
+
+  it("gates /apps/<id> with the /apps prefix: platform:all only", () => {
+    expect(allowed("/apps/7f1c", ["platform:all"])).toBe(true);
+    expect(allowed("/apps/7f1c", ["org.member:manage"])).toBe(false);
+    expect(allowed("/apps/7f1c", [])).toBe(false);
+  });
 });
