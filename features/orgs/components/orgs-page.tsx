@@ -75,12 +75,16 @@ export function OrgsPage() {
   const [deactivating, setDeactivating] = useState<OrgListItem | null>(null);
 
   useEffect(() => {
+    const next = search.trim();
+    // Only a changed search resets the page: on mount (or a whitespace-only edit) this
+    // would otherwise undo a page picked within the debounce window.
+    if (next === q) return;
     const timer = setTimeout(() => {
-      setQ(search.trim());
+      setQ(next);
       setPage(1);
     }, 250);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [search, q]);
 
   const orgs = useOrgs({ page, pageSize: PAGE_SIZE, ...(q ? { q } : {}) }, { staleTime: 0 });
   const items = orgs.data?.items ?? [];
