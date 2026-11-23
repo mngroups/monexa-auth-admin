@@ -6,7 +6,7 @@ import { BrandMark } from "../brand-mark";
 describe("BrandMark", () => {
   it("shows the client logo", () => {
     render(<BrandMark logoUrl="https://auth.test/branding/orgs/pt/logo" />);
-    expect(screen.getByRole("img", { name: "Monexa App" })).toHaveAttribute(
+    expect(screen.getByRole("img", { name: "Monexa Admin" })).toHaveAttribute(
       "src",
       "https://auth.test/branding/orgs/pt/logo"
     );
@@ -16,13 +16,13 @@ describe("BrandMark", () => {
     render(<BrandMark logoUrl="https://auth.test/branding/orgs/none/logo" />);
     fireEvent.error(screen.getByRole("img"));
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
-    expect(screen.getByText("Monexa App")).toBeInTheDocument();
+    expect(screen.getByText("Monexa Admin")).toBeInTheDocument();
   });
 
   it("shows the app name without a logo", () => {
     render(<BrandMark logoUrl={null} />);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
-    expect(screen.getByText("Monexa App")).toBeInTheDocument();
+    expect(screen.getByText("Monexa Admin")).toBeInTheDocument();
   });
 
   describe("a logo that already failed before hydration", () => {
@@ -33,7 +33,7 @@ describe("BrandMark", () => {
       vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(0);
       render(<BrandMark logoUrl="https://auth.test/branding/orgs/none/logo" />);
       expect(screen.queryByRole("img")).not.toBeInTheDocument();
-      expect(screen.getByText("Monexa App")).toBeInTheDocument();
+      expect(screen.getByText("Monexa Admin")).toBeInTheDocument();
     });
 
     it("keeps a logo that loaded before hydration", () => {

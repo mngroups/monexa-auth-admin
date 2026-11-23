@@ -24,14 +24,14 @@ describe("proxy", () => {
   });
 
   it("sends a signed-in user away from /login", () => {
-    proxy(request("/login", { app_refresh_token: "r" }));
+    proxy(request("/login", { admin_refresh_token: "r" }));
     expect(NextResponse.redirect).toHaveBeenCalledWith(new URL("http://localhost/"));
   });
 
   it("passes the pathname on to the layouts", () => {
-    proxy(request("/example", { app_access_token: "a" }));
+    proxy(request("/members", { admin_access_token: "a" }));
     const init = next.mock.calls[0][0] as { request: { headers: Headers } };
-    expect(init.request.headers.get("x-pathname")).toBe("/example");
+    expect(init.request.headers.get("x-pathname")).toBe("/members");
     expect(NextResponse.redirect).not.toHaveBeenCalled();
   });
 
@@ -45,7 +45,7 @@ describe("proxy", () => {
     "lets %s through both signed in and signed out",
     (path) => {
       proxy(request(path));
-      proxy(request(path, { app_refresh_token: "r" }));
+      proxy(request(path, { admin_refresh_token: "r" }));
       expect(NextResponse.redirect).not.toHaveBeenCalled();
       expect(next).toHaveBeenCalledTimes(2);
     }

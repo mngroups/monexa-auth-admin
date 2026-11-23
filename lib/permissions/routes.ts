@@ -1,5 +1,7 @@
 import type { RoutePermissions } from "@mono/auth";
 
+import { ADMIN_PERMISSIONS as P } from "./admin";
+
 /**
  * Route → permissions required to reach it (OR: any one grants access).
  * Routes absent from this map are open to every authenticated user.
@@ -7,5 +9,10 @@ import type { RoutePermissions } from "@mono/auth";
  * post-login landing route. Reference leaf permissions here.
  */
 export const ROUTE_PERMISSIONS: RoutePermissions = {
-  "/example": ["example.item:view"],
+  "/members": [P.memberManage, P.platformAll],
+  "/branding": [P.brandingManage, P.platformAll],
+  "/activity": [P.activityView, P.platformAll],
+  "/orgs": [P.platformAll],
+  "/apps": [P.platformAll],
+  "/users": [P.platformAll],
 };

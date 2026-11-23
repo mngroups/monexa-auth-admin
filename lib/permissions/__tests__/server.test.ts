@@ -12,9 +12,8 @@ vi.mock("@/features/auth/actions/auth-check.actions", () => ({ getAuthCheckActio
 const listOrgs = vi.fn();
 vi.mock("@/lib/session", () => ({ hasSession, authFlow: { listOrgs } }));
 
-const { can, canAccessRoute, getActiveOrg, getPermissions, resolveLandingRoute } = await import(
-  "../server"
-);
+const { can, canAccessRoute, getActiveOrg, getCurrentUserId, getPermissions, resolveLandingRoute } =
+  await import("../server");
 
 // The gate's own rules are tested in @mono/auth; this checks the app's wiring:
 // /v1/auth/check as the source, ROUTE_PERMISSIONS as the map, menu order as landing order.
@@ -25,16 +24,23 @@ describe("permissions/server", () => {
   });
 
   it("gates routes and picks the landing route from /v1/auth/check", async () => {
-    getAuthCheckAction.mockResolvedValue({ user_id: "u1", permissions: ["example.item:view"] });
-    expect(await getPermissions()).toEqual(["example.item:view"]);
-    expect(await canAccessRoute("/example")).toBe(true);
-    expect(await can("example.item:create")).toBe(false);
-    expect(await resolveLandingRoute()).toBe("/example");
+    getAuthCheckAction.mockResolvedValue({ user_id: "u1", permissions: ["org.member:manage"] });
+    expect(await getPermissions()).toEqual(["org.member:manage"]);
+    expect(await canAccessRoute("/members")).toBe(true);
+    expect(await can("org.role:assign")).toBe(false);
+    expect(await resolveLandingRoute()).toBe("/members");
+  });
+
+  it("gates an app detail route through the /apps prefix", async () => {
+    getAuthCheckAction.mockResolvedValue({ user_id: "u1", permissions: ["org.member:manage"] });
+    expect(await canAccessRoute("/apps/abc")).toBe(false);
+    getAuthCheckAction.mockResolvedValue({ user_id: "u1", permissions: ["platform:all"] });
+    expect(await canAccessRoute("/apps/abc")).toBe(true);
   });
 
   it("blocks a mapped route without its permission", async () => {
     getAuthCheckAction.mockResolvedValue({ user_id: "u1", permissions: [] });
-    expect(await canAccessRoute("/example")).toBe(false);
+    expect(await canAccessRoute("/members")).toBe(false);
     expect(await resolveLandingRoute()).toBeNull();
   });
 
@@ -69,6 +75,19 @@ describe("permissions/server", () => {
     getAuthCheckAction.mockResolvedValue({ user_id: "u1", permissions: [], org });
     listOrgs.mockRejectedValue(new Error("down"));
     expect(await getActiveOrg()).toEqual({ org, orgCount: 1 });
+  });
+
+  it("reads the current user id from the shared check, or null when unavailable", async () => {
+    getAuthCheckAction.mockResolvedValue({ user_id: "u1", permissions: [] });
+    expect(await getCurrentUserId()).toBe("u1");
+
+    getAuthCheckAction.mockRejectedValue(new Error("down"));
+    expect(await getCurrentUserId()).toBeNull();
+
+    hasSession.mockResolvedValue(false);
+    getAuthCheckAction.mockClear();
+    expect(await getCurrentUserId()).toBeNull();
+    expect(getAuthCheckAction).not.toHaveBeenCalled();
   });
 
   it("lets a session-expiry redirect through", async () => {

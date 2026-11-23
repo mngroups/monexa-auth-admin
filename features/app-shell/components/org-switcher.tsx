@@ -16,7 +16,8 @@ import { listOrgsAction, switchOrgAction } from "@/features/auth/actions/org.act
 import type { Org } from "@/features/auth/schema";
 import { toast } from "@/lib/toast";
 
-export const ORGS_KEY = ["orgs"] as const;
+/** Distinct from the Organizations page's `["orgs", …]` keys: this is the switcher's own list. */
+export const SWITCHER_ORGS_KEY = ["switcher-orgs"] as const;
 
 /**
  * The shell's brand: the active org (with the app name beneath), and a menu to
@@ -48,7 +49,7 @@ function OrgMenu({ active, label }: { active: Org; label: ReactNode }) {
   const [open, setOpen] = useState(false);
   // Loaded on open only; staleTime 0 so membership changes show on the next open.
   const orgs = useQuery({
-    queryKey: ORGS_KEY,
+    queryKey: SWITCHER_ORGS_KEY,
     queryFn: () => listOrgsAction(),
     enabled: open,
     staleTime: 0,

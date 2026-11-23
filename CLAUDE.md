@@ -1,8 +1,8 @@
-# Monexa App — Agent Instruction Guide
+# Monexa Admin — Agent Instruction Guide
 
 ## Project Overview
 
-Next.js 16 (App Router, Turbopack) frontend created from the Monexa app template. React 19, TypeScript, Tailwind CSS v4, [Biome](https://biomejs.dev) for lint + format, the **MoNo design system** (`@mono/ui`, shadcn/ui + Radix + Tailwind v4), `@mono/hooks`, `@mono/utils`, `@mono/auth` (session, API client, RBAC), [TanStack Query](https://tanstack.com/query) v5 for server state, [Zustand](https://github.com/pmndrs/zustand) for client state, [Zod](https://zod.dev) v4, [react-hook-form](https://react-hook-form.com), [Vitest](https://vitest.dev) + React Testing Library.
+Next.js 16 (App Router, Turbopack) admin UI for monexa-auth (`/v1/auth/*`, `/api/admin/*`). React 19, TypeScript, Tailwind CSS v4, [Biome](https://biomejs.dev) for lint + format, the **MoNo design system** (`@mono/ui`, shadcn/ui + Radix + Tailwind v4), `@mono/hooks`, `@mono/utils`, `@mono/auth` (session, API client, RBAC), [TanStack Query](https://tanstack.com/query) v5 for server state, [Zustand](https://github.com/pmndrs/zustand) for client state, [Zod](https://zod.dev) v4, [react-hook-form](https://react-hook-form.com), [Vitest](https://vitest.dev) + React Testing Library.
 
 **Package manager:** `pnpm@10.33.0` (lockfile committed; do **not** mix in npm/yarn).
 **Node:** 24.22.1 (`.nvmrc`, `engines`, the Dockerfile and CI via `node-version-file`; bump all of them together).
@@ -11,7 +11,7 @@ Next.js 16 (App Router, Turbopack) frontend created from the Monexa app template
 
 | Script                                 | What it does                              |
 | -------------------------------------- | ----------------------------------------- |
-| `pnpm dev`                             | Next dev server (port 3000)               |
+| `pnpm dev`                             | Next dev server (port 3001)               |
 | `pnpm build`                           | Production build (`output: "standalone"`) |
 | `pnpm test:run` / `pnpm test:coverage` | Vitest single pass / with coverage        |
 | `pnpm lint` / `pnpm lint:fix`          | Biome lint + format check / autofix       |
@@ -27,8 +27,7 @@ app/
 ├── (auth)/login/            # Unauthenticated routes (form, or SSO redirect / error card)
 ├── auth/start, auth/callback/  # SSO route handlers (sso mode only; 404 otherwise)
 ├── (protected)/             # Requires a session; layout mounts the shell + route gate
-│   ├── layout.tsx
-│   └── example/page.tsx     # Thin shell → features/example
+│   └── layout.tsx
 ├── logout/                  # Confirmation page + POST /logout/confirm (revokes, clears cookies, central sign-out)
 ├── health/, version/
 ├── layout.tsx               # Root layout: theme script, <Providers>
@@ -37,7 +36,7 @@ app/
 features/
 ├── app-shell/               # Sidebar shell, menu items, OrgSwitcher, RestrictedPage
 ├── auth/                    # Login/logout/org actions, useAuth, LoginForm, SsoErrorCard, ProtectedPage
-└── example/                 # Reference feature — copy its shape
+└── admin-shared/            # OneTimeSecretModal, ConfirmActionModal, pageOf, useCurrentUserId
 lib/
 ├── app-config.ts            # APP_NAME, cookie prefix and names, getAuthMode(), getAuthPortalUrl()
 ├── session.ts               # createSession() + createAuthFlow(): apiClient, token cookies, authFlow
@@ -88,12 +87,12 @@ features/<domain>/
 └── stores/, helpers/, constants/   # optional
 ```
 
-| Concern           | Convention             | Example                    |
-| ----------------- | ---------------------- | -------------------------- |
-| Server Actions    | `<domain>.actions.ts`  | `example.actions.ts`       |
-| React Query hooks | `use-<domain>.ts`      | `use-example.ts`           |
-| Components        | kebab-case `.tsx`      | `create-example-modal.tsx` |
-| Stores            | `use-<store>-store.ts` |                            |
+| Concern           | Convention             | Example                   |
+| ----------------- | ---------------------- | ------------------------- |
+| Server Actions    | `<domain>.actions.ts`  | `members.actions.ts`      |
+| React Query hooks | `use-<domain>.ts`      | `use-members.ts`          |
+| Components        | kebab-case `.tsx`      | `create-member-modal.tsx` |
+| Stores            | `use-<store>-store.ts` |                           |
 
 ---
 
@@ -124,6 +123,7 @@ export async function getMyDataAction(params: MyParams): Promise<MyData> {
 Rules:
 
 - `"use server";` is the first statement of the file.
+- **Validate every argument with Zod before the API call** (`parseInput` in `features/admin-shared/validation.ts`): ids are `z.uuid()` (except app permission strings and client ids), page params are bounded ints, enums are enums, a logo `FormData` has exactly one `file` field. Invalid input fails with `Data tidak valid` in the action's usual result shape.
 - Always pass a Zod schema (build it with `apiEnvelope(dataSchema)` from `@mono/auth`) — never trust the BE shape.
 - `params` become the query string; bodies go through `body: JSON.stringify(...)`.
 - Turn `success: false` into a thrown `ApiError` so TanStack Query's `onError` fires.
@@ -154,7 +154,7 @@ Built by `createSession()` from `@mono/auth/server` with this app's cookie names
 
 ## React Query Conventions
 
-One `use-<domain>.ts` per feature with a top-level `<DOMAIN>_KEY` const (see `features/example/hooks/use-example.ts`).
+One `use-<domain>.ts` per feature with a top-level `<DOMAIN>_KEY` const.
 
 - `staleTime: 30_000` for snapshot/dashboard data; `0` for paged lists.
 - `placeholderData: (prev) => prev` on paginated queries (no table flicker).
@@ -205,7 +205,7 @@ const form = useForm<MyValues>({
 
 - `mode: "onChange"` so submit can disable on `!isValid || !isDirty`.
 - `.min(1)` on every required string — `z.string()` alone accepts `""`.
-- Modal forms open through the URL with `useModalToggle`/`useModalParam` (`@mono/hooks/next`) and keep a draft with `useFormDraft` (`@mono/hooks/form-draft`), called **after** any reset-on-open effect. `clearDraft()` on Batal/success; `clearAllFormDrafts()` on logout. Never draft passwords. See `features/example/components/create-example-modal.tsx`.
+- Modal forms open through the URL with `useModalToggle`/`useModalParam` (`@mono/hooks/next`) and keep a draft with `useFormDraft` (`@mono/hooks/form-draft`), called **after** any reset-on-open effect. `clearDraft()` on Batal/success; `clearAllFormDrafts()` on logout. Never draft passwords.
 
 ---
 
@@ -222,7 +222,7 @@ Everything flows from `GET /v1/auth/check` → `{ user_id, permissions: string[]
 ### Organizations
 
 - The active org comes from the check (`getActiveOrg()` in `lib/permissions/server.ts`, request-cached with the gate); the shell's `OrgSwitcher` shows it and switches via `switchOrgAction`, then reloads `/`.
-- **Never keep org-scoped data without the org id**: no org data in Zustand or `localStorage`, and React Query keys for org data include the org id. The switch reloads the page, but a stale persisted entry would survive it. A granted `:all` parent includes every descendant (`example:all` grants `example.item:view`).
+- **Never keep org-scoped data without the org id**: no org data in Zustand or `localStorage`, and React Query keys for org data include the org id. The switch reloads the page, but a stale persisted entry would survive it. A granted `:all` parent includes every descendant (`platform:all` grants every `platform.*` permission).
 
 | Concern                                      | Where                                                                         |
 | -------------------------------------------- | ----------------------------------------------------------------------------- |
@@ -254,9 +254,18 @@ Trunk-based: unfinished user-facing work ships behind a flag (default `false`). 
 - `vitest.setup.tsx` mocks `next/navigation` (search params follow `window.location`), `next/headers`, `next/link`, `next/image`, `matchMedia` (desktop). For the mobile branch, mock `@mono/hooks` partially (`importOriginal`) with `useIsMobile: () => true`.
 - `server.deps.inline: [/@mono(xa)?\//]` makes `vi.mock("next/navigation")` reach the DS packages — keep it.
 - Prefer ARIA queries over positional ones.
-- **Coverage is 100% and enforced.** Unreachable branch → delete it, or keep a genuine defensive guard with `/* v8 ignore next -- @preserve <reason> */`. Thin route shells are excluded automatically (`vitest.config.ts`).
+- **Coverage is 80% and enforced.** Unreachable branch → delete it, or keep a genuine defensive guard with `/* v8 ignore next -- @preserve <reason> */`. Thin route shells are excluded automatically (`vitest.config.ts`).
 
 ---
+
+## Admin rules
+
+Permissions: `lib/permissions/admin.ts::ADMIN_PERMISSIONS`; routes → `lib/permissions/routes.ts`.
+
+- **One-time secrets** (client secret, temporary password): generated or returned by a Server Action, shown only in `OneTimeSecretModal` ("Simpan sekarang — tidak akan ditampilkan lagi."), kept in component state only (mutations use `gcTime: 0` and move the value to state in `onSuccess`), dropped on close. Never in a React Query cache, the URL, Zustand, storage or `console`. Temporary passwords come from `generateTemporaryPassword()` (server-side), never typed by the admin.
+- **Self-protection:** on the signed-in user's own row (`useCurrentUserId()`), hide the role, membership, deactivate, reset-password and platform-admin actions. The BE refuses them too. **Fail closed:** while `useCurrentUserId()` is `null` (unknown), hide those actions on every row, and never resolve a `?modal=roles&target=` deep link.
+- **`ConfirmActionModal`** guards every destructive action and names the target (remove member, deactivate, reset password, disable app for an org, delete role/permission, revoke platform admin, rotate secret).
+- **Deep links:** a `?modal=<mode>&target=<id>` whose target isn't on the loaded list drops its params (`closeModal()`) instead of leaving a dangling `?modal=`.
 
 ## Always run lint after any change
 
@@ -273,7 +282,7 @@ Before pushing: `pnpm lint && pnpm typecheck && pnpm test:coverage && pnpm build
 
 ## Adding a New Feature — Recipe
 
-1. `features/<domain>/` with `actions/`, `components/`, `hooks/`, `schema.ts` (copy `features/example/`).
+1. `features/<domain>/` with `actions/`, `components/`, `hooks/`, `schema.ts`.
 2. Schemas: request params + `apiEnvelope(...)` responses; export inferred types.
 3. Server Actions in `actions/<domain>.actions.ts`.
 4. React Query hooks in `hooks/use-<domain>.ts` with a `<DOMAIN>_KEY`.

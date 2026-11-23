@@ -25,22 +25,22 @@ describe("OrgSwitcher", () => {
   });
 
   it("shows the app name when the token carries no org", () => {
-    renderWithProviders(<OrgSwitcher org={null} orgCount={0} appName="Monexa App" />);
-    expect(screen.getByText("Monexa App")).toBeInTheDocument();
+    renderWithProviders(<OrgSwitcher org={null} orgCount={0} appName="Monexa Admin" />);
+    expect(screen.getByText("Monexa Admin")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("shows a single org as plain text without loading the list", () => {
-    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={1} appName="Monexa App" />);
+    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={1} appName="Monexa Admin" />);
     expect(screen.getByText("PT Maju Jaya")).toBeInTheDocument();
-    expect(screen.getByText("Monexa App")).toBeInTheDocument();
+    expect(screen.getByText("Monexa Admin")).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
     expect(listOrgsAction).not.toHaveBeenCalled();
   });
 
   it("lists the orgs on open with a check on the active one", async () => {
     listOrgsAction.mockResolvedValue([ACTIVE, OTHER]);
-    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa App" />);
+    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa Admin" />);
     expect(listOrgsAction).not.toHaveBeenCalled();
 
     await userEvent.click(screen.getByRole("button", { name: /PT Maju Jaya/ }));
@@ -54,7 +54,7 @@ describe("OrgSwitcher", () => {
   it("switches and reloads to the landing route", async () => {
     listOrgsAction.mockResolvedValue([ACTIVE, OTHER]);
     switchOrgAction.mockResolvedValue({ ok: true });
-    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa App" />);
+    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa Admin" />);
     await userEvent.click(screen.getByRole("button", { name: /PT Maju Jaya/ }));
     await userEvent.click(await screen.findByRole("menuitem", { name: /CV Sinar Abadi/ }));
     await waitFor(() => expect(assign).toHaveBeenCalledWith("/"));
@@ -63,7 +63,7 @@ describe("OrgSwitcher", () => {
 
   it("does nothing when the active org is picked again", async () => {
     listOrgsAction.mockResolvedValue([ACTIVE, OTHER]);
-    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa App" />);
+    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa Admin" />);
     await userEvent.click(screen.getByRole("button", { name: /PT Maju Jaya/ }));
     await userEvent.click(await screen.findByRole("menuitem", { name: /PT Maju Jaya/ }));
     expect(switchOrgAction).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe("OrgSwitcher", () => {
       reason: "org_not_eligible",
       message: "Organisasi tidak tersedia",
     });
-    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa App" />);
+    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa Admin" />);
     await userEvent.click(screen.getByRole("button", { name: /PT Maju Jaya/ }));
     await userEvent.click(await screen.findByRole("menuitem", { name: /CV Sinar Abadi/ }));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith("Organisasi tidak tersedia"));
@@ -86,7 +86,7 @@ describe("OrgSwitcher", () => {
   it("toasts when the switch itself fails", async () => {
     listOrgsAction.mockResolvedValue([ACTIVE, OTHER]);
     switchOrgAction.mockRejectedValue(new Error("Jaringan bermasalah"));
-    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa App" />);
+    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa Admin" />);
     await userEvent.click(screen.getByRole("button", { name: /PT Maju Jaya/ }));
     await userEvent.click(await screen.findByRole("menuitem", { name: /CV Sinar Abadi/ }));
     await waitFor(() => expect(toastError).toHaveBeenCalledWith("Jaringan bermasalah"));
@@ -95,7 +95,7 @@ describe("OrgSwitcher", () => {
   it("shows skeleton rows while loading and a toast when the list fails", async () => {
     let fail!: (e: Error) => void;
     listOrgsAction.mockReturnValue(new Promise((_, reject) => (fail = reject)));
-    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa App" />);
+    renderWithProviders(<OrgSwitcher org={ACTIVE} orgCount={2} appName="Monexa Admin" />);
     await userEvent.click(screen.getByRole("button", { name: /PT Maju Jaya/ }));
     expect(await screen.findAllByTestId("org-switcher-skeleton")).toHaveLength(2);
     fail(new Error("Gagal memuat organisasi"));

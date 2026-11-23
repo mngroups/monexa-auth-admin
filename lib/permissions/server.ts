@@ -24,6 +24,16 @@ export const { getPermissions, can, canAccessRoute, resolveLandingRoute } = crea
   fetchPermissions: async () => (await getAuthCheck()).permissions,
 });
 
+/**
+ * The signed-in user's id from the request-cached check (no second BE call).
+ * Null when signed out or the check fails; self-protection then simply hides nothing
+ * extra and the BE still refuses self-actions.
+ */
+export const getCurrentUserId = cache(async (): Promise<string | null> => {
+  if (!(await hasSession())) return null;
+  return orFallback(async () => (await getAuthCheck()).user_id, null);
+});
+
 export type ActiveOrg = { org: Org | null; orgCount: number };
 
 /** Runs `load`; any failure except a session-expiry redirect yields `fallback`. */

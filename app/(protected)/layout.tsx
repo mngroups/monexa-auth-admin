@@ -2,6 +2,8 @@ import { PermissionsProvider } from "@mono/auth/react";
 import type { Metadata } from "next";
 import { cookies, headers } from "next/headers";
 import type { ReactNode } from "react";
+import { ActiveOrgProvider } from "@/features/admin-shared/hooks/use-active-org";
+import { CurrentUserProvider } from "@/features/admin-shared/hooks/use-current-user";
 import { AppShell } from "@/features/app-shell/components/app-shell";
 import { RestrictedPage } from "@/features/app-shell/components/restricted-page";
 import ProtectedPage from "@/features/auth/components/protected-page";
@@ -10,6 +12,7 @@ import { ROUTE_PERMISSIONS } from "@/lib/permissions/routes";
 import {
   canAccessRoute,
   getActiveOrg,
+  getCurrentUserId,
   getPermissions,
   resolveLandingRoute,
 } from "@/lib/permissions/server";
@@ -32,14 +35,19 @@ export default async function ProtectedLayout({ children }: { children: ReactNod
   const permissions = await getPermissions();
   const hasAnyMenu = (await resolveLandingRoute()) !== null;
   const { org, orgCount } = await getActiveOrg();
+  const userId = await getCurrentUserId();
 
   return (
     <PermissionsProvider permissions={permissions} routes={ROUTE_PERMISSIONS}>
-      <AppShell defaultOpen={defaultOpen} userName={userName} org={org} orgCount={orgCount}>
-        <ProtectedPage>
-          {allowed ? children : <RestrictedPage variant={hasAnyMenu ? "route" : "account"} />}
-        </ProtectedPage>
-      </AppShell>
+      <CurrentUserProvider userId={userId}>
+        <ActiveOrgProvider orgId={org?.id ?? null}>
+          <AppShell defaultOpen={defaultOpen} userName={userName} org={org} orgCount={orgCount}>
+            <ProtectedPage>
+              {allowed ? children : <RestrictedPage variant={hasAnyMenu ? "route" : "account"} />}
+            </ProtectedPage>
+          </AppShell>
+        </ActiveOrgProvider>
+      </CurrentUserProvider>
     </PermissionsProvider>
   );
 }

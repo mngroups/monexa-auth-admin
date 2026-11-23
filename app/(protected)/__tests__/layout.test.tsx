@@ -1,5 +1,7 @@
 import { render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { useActiveOrgId } from "@/features/admin-shared/hooks/use-active-org";
+import { useCurrentUserId } from "@/features/admin-shared/hooks/use-current-user";
 
 const cookieGet = vi.fn();
 const headersGet = vi.fn();
@@ -12,6 +14,7 @@ const server = {
   getPermissions: vi.fn(),
   resolveLandingRoute: vi.fn(),
   getActiveOrg: vi.fn(),
+  getCurrentUserId: vi.fn(),
 };
 vi.mock("@/lib/permissions/server", () => server);
 vi.mock("@/features/auth/components/protected-page", () => ({
@@ -45,9 +48,10 @@ const { default: ProtectedLayout } = await import("../layout");
 describe("protected layout", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    server.getPermissions.mockResolvedValue(["example.item:view"]);
-    server.resolveLandingRoute.mockResolvedValue("/example");
+    server.getPermissions.mockResolvedValue(["org.member:manage"]);
+    server.resolveLandingRoute.mockResolvedValue("/members");
     server.getActiveOrg.mockResolvedValue({ org: { id: "o1", name: "PT A" }, orgCount: 2 });
+    server.getCurrentUserId.mockResolvedValue("u1");
   });
 
   it("hands the active org to the shell", async () => {
@@ -58,9 +62,27 @@ describe("protected layout", () => {
     expect(shell).toHaveAttribute("data-org-count", "2");
   });
 
+  it("provides the signed-in user id to the pages", async () => {
+    headersGet.mockReturnValue(null);
+    function WhoAmI() {
+      return <p>{`me:${useCurrentUserId()}`}</p>;
+    }
+    render(await ProtectedLayout({ children: <WhoAmI /> }));
+    expect(screen.getByText("me:u1")).toBeInTheDocument();
+  });
+
+  it("provides the active org id to the pages", async () => {
+    headersGet.mockReturnValue(null);
+    function WhichOrg() {
+      return <p>{`org:${useActiveOrgId()}`}</p>;
+    }
+    render(await ProtectedLayout({ children: <WhichOrg /> }));
+    expect(screen.getByText("org:o1")).toBeInTheDocument();
+  });
+
   it("renders an allowed page", async () => {
     cookieGet.mockReturnValue({ value: "false" });
-    headersGet.mockReturnValue("/example");
+    headersGet.mockReturnValue("/members");
     server.canAccessRoute.mockResolvedValue(true);
     render(await ProtectedLayout({ children: <p>page</p> }));
     expect(screen.getByText("page")).toBeInTheDocument();
@@ -81,14 +103,14 @@ describe("protected layout", () => {
   });
 
   it("shows the restricted page for a blocked route", async () => {
-    headersGet.mockReturnValue("/example");
+    headersGet.mockReturnValue("/members");
     server.canAccessRoute.mockResolvedValue(false);
     render(await ProtectedLayout({ children: <p>page</p> }));
     expect(screen.getByText("Anda tidak memiliki akses ke halaman ini.")).toBeInTheDocument();
   });
 
   it("offers logout when no menu is reachable at all", async () => {
-    headersGet.mockReturnValue("/example");
+    headersGet.mockReturnValue("/members");
     server.canAccessRoute.mockResolvedValue(false);
     server.resolveLandingRoute.mockResolvedValue(null);
     render(await ProtectedLayout({ children: <p>page</p> }));

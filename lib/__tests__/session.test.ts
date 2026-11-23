@@ -21,9 +21,9 @@ describe("lib/session", () => {
     expect(createSession).toHaveBeenCalledWith({
       apiBaseUrl: "https://be.test",
       cookies: {
-        accessToken: "app_access_token",
-        refreshToken: "app_refresh_token",
-        extra: ["app_username"],
+        accessToken: "admin_access_token",
+        refreshToken: "admin_refresh_token",
+        extra: ["admin_username"],
       },
       debug: true,
     });
@@ -41,7 +41,7 @@ describe("lib/session", () => {
     expect(createAuthFlow).toHaveBeenCalledWith({
       session: createSession.mock.results[0].value,
       mode: "sso",
-      cookiePrefix: "app",
+      cookiePrefix: "admin",
     });
   });
 });

@@ -2,7 +2,6 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button, FloatingInput, Form } from "@mono/ui";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
@@ -85,11 +84,6 @@ export default function LoginForm({
             </a>
           </p>
         )}
-        <p className="mt-5 text-center text-sm text-muted-foreground">
-          <Link href="/template" className="font-medium text-primary hover:underline">
-            Tentang template
-          </Link>
-        </p>
       </AuthCard>
     </AuthLayout>
   );
