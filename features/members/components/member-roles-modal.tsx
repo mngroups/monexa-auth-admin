@@ -47,7 +47,6 @@ export function MemberRolesModal({
       title={member ? `Atur role ${memberLabel(member)}` : "Atur role"}
       confirmLabel="Simpan"
       onConfirm={form.handleSubmit((values) => member && onSave(member, values.roleIds))}
-      onCancel={onClose}
       confirmDisabled={pending}
       loading={pending}
     >

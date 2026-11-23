@@ -42,7 +42,6 @@ export function CreateMemberModal({
       description="Akun baru dibuat dengan password sementara yang ditampilkan sekali."
       confirmLabel="Simpan"
       onConfirm={form.handleSubmit(onSubmit)}
-      onCancel={onClose}
       confirmDisabled={!(isValid && isDirty) || pending}
       loading={pending}
     >

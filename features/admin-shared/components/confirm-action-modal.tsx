@@ -39,7 +39,6 @@ export function ConfirmActionModal({
       loading={pending}
       confirmDisabled={pending}
       onConfirm={onConfirm}
-      onCancel={onClose}
     />
   );
 }

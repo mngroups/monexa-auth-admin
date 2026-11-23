@@ -211,11 +211,6 @@ export function OrgDetailModal({ org, onClose }: { org: OrgListItem | null; onCl
       }}
       title={org ? org.name : "Organisasi"}
       description={org ? org.slug : undefined}
-      footer={
-        <Button type="button" variant="outline" onClick={onClose}>
-          Tutup
-        </Button>
-      }
       modalWidth="40rem"
     >
       {org && (

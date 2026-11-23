@@ -205,6 +205,7 @@ const form = useForm<MyValues>({
 
 - `mode: "onChange"` so submit can disable on `!isValid || !isDirty`.
 - `.min(1)` on every required string — `z.string()` alone accepts `""`.
+- **`DynamicModal` close: wire it once.** Pass the close handler to `onOpenChange` only; never also `onCancel={close}`. Its × and Batal call `onCancel` _then_ `onOpenChange(false)`, so wiring both closes twice (with a URL modal: two `history.back()` → leaves the page). `onCancel` is only for extra work on cancel (e.g. `clearDraft`), never the close itself. One close control: don't add a footer "Tutup" button next to the header ×.
 - Modal forms open through the URL with `useModalToggle`/`useModalParam` (`@mono/hooks/next`) and keep a draft with `useFormDraft` (`@mono/hooks/form-draft`), called **after** any reset-on-open effect. `clearDraft()` on Batal/success; `clearAllFormDrafts()` on logout. Never draft passwords.
 
 ---

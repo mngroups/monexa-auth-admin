@@ -267,6 +267,23 @@ describe("MembersPage", () => {
     await dialogClosed();
   });
 
+  it.each(["Batal", "Tutup"])(
+    "closes a form modal with a single history back (%s)",
+    async (name) => {
+      const back = vi.spyOn(window.history, "back");
+      renderPage();
+      await screen.findByText("Budi");
+      await userEvent.click(screen.getByRole("button", { name: "Tambah anggota" }));
+      await waitFor(() => expect(window.location.search).toBe("?modal=create"));
+      await userEvent.click(
+        within(await screen.findByRole("dialog")).getByRole("button", { name })
+      );
+      await waitFor(() => expect(window.location.search).toBe(""));
+      expect(back).toHaveBeenCalledTimes(1);
+      back.mockRestore();
+    }
+  );
+
   it("opens add-existing from the URL", async () => {
     renderPage();
     await screen.findByText("Budi");

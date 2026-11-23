@@ -41,7 +41,6 @@ export function AppFormModal({
       description="Client ID tidak bisa diubah setelah dibuat. Client secret ditampilkan sekali."
       confirmLabel="Simpan"
       onConfirm={form.handleSubmit(onSubmit)}
-      onCancel={onClose}
       confirmDisabled={!(isValid && isDirty) || pending}
       loading={pending}
     >

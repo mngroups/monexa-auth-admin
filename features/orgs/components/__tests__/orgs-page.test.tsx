@@ -181,6 +181,12 @@ describe("OrgsPage", () => {
     await waitFor(() => expect(actions.setOrgActiveAction).toHaveBeenCalledWith("o2", true));
   });
 
+  it("offers a single close control in the detail modal", async () => {
+    renderPage();
+    const dialog = await openDetail("Acme");
+    expect(within(dialog).getAllByRole("button", { name: "Tutup" })).toHaveLength(1);
+  });
+
   it("sends only the changed name on the Info tab", async () => {
     actions.updateOrgAction.mockResolvedValue(ok({ ...acme, name: "Acme Baru" }));
     renderPage();
