@@ -1,0 +1,5 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "nextjs",
+  "installCommand": "NPMRC_PATH=/tmp/.npmrc sh scripts/write-npmrc.sh && NPM_CONFIG_USERCONFIG=/tmp/.npmrc pnpm install --frozen-lockfile"
+}
