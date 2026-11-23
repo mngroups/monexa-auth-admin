@@ -6,6 +6,21 @@ platform admins manage orgs, apps and users. It signs in through monexa-auth (SS
 permissions returned by `GET /v1/auth/check` (`platform:all`, `org.member:manage`, `org.role:assign`,
 `org.activity:view`, `org.branding:manage`).
 
+## Screens
+
+| Route       | Who                                 | What                                                                                |
+| ----------- | ----------------------------------- | ----------------------------------------------------------------------------------- |
+| `/members`  | `org.member:manage`, platform admin | Org members: add, roles, activate/deactivate, reset password                        |
+| `/branding` | `org.branding:manage`, platform     | Org logo and login branding                                                         |
+| `/activity` | `org.activity:view`, platform admin | Org activity log                                                                    |
+| `/orgs`     | platform admin                      | Organizations                                                                       |
+| `/apps`     | platform admin                      | Apps, their roles/permissions, org access and client secrets                        |
+| `/users`    | platform admin                      | All users: create, activate/deactivate, reset password, grant/revoke platform admin |
+
+Temporary passwords and client secrets are generated server-side and shown once in a modal; they are
+never stored in a cache, URL or storage. Destructive actions ask for confirmation, and your own row
+has no deactivate, reset-password or platform-admin actions.
+
 ## Environment
 
 | Env               | Local value             | Notes                                    |
@@ -15,7 +30,15 @@ permissions returned by `GET /v1/auth/check` (`platform:all`, `org.member:manage
 | `AUTH_PORTAL_URL` | `http://localhost:9000` | monexa-auth origin for the central login |
 | `AUTH_ORG_HINT`   | empty                   | Optional org slug for the login branding |
 
+## First run
+
+1. In the monexa-auth repo run `pnpm auth:bootstrap`. It prints the admin client secret once.
+2. Put that secret in monexa-auth's `ADMIN_CLIENT_SECRET` and start monexa-auth (port 9000).
+3. Start this app with `pnpm dev` (http://localhost:3001) and sign in as the platform admin.
+
 `pnpm dev` serves on http://localhost:3001. Coverage is enforced at 80%.
+
+Before merging: `@mono/ui` is already `^0.2.2`, so no dependency bump is needed.
 
 The rest of this file is the app template's guide, kept for reference.
 
