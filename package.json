@@ -21,6 +21,7 @@
     "flag:new": "node scripts/create-feature-flag.mjs",
     "flag:remove": "node scripts/remove-feature-flag.mjs",
     "registry:run": "node scripts/with-gitlab-registry-auth.mjs",
+    "deps:mono": "node scripts/with-gitlab-registry-auth.mjs update \"@mono/*\" --latest",
     "prepare": "husky",
     "release": "release-it --git.tagExclude='*[-]*'",
     "staging-release": "release-it --preRelease=rc --no-github.release"
@@ -31,7 +32,7 @@
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
     "@mono/auth": "^0.3.0",
-    "@mono/hooks": "^0.2.0",
+    "@mono/hooks": "^0.2.1",
     "@mono/ui": "^0.2.2",
     "@mono/utils": "^0.2.0",
     "@tanstack/react-query": "^5.90.19",
