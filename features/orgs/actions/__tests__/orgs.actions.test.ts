@@ -55,7 +55,11 @@ describe("listOrgsAction logo url", () => {
     apiClient.mockResolvedValue(
       ok({
         items: [
-          { ...org, logo: { etag: "e 1", updatedAt: "t" } },
+          {
+            ...org,
+            logo: { etag: "e 1", updatedAt: "t" },
+            logoDark: { etag: "d1", updatedAt: "t" },
+          },
           { ...org, id: "o2", slug: "beta", logo: null },
         ],
         page: 1,
@@ -68,8 +72,11 @@ describe("listOrgsAction logo url", () => {
       ok: true,
       data: {
         items: [
-          { logoUrl: "https://auth.example.id/branding/orgs/acme/logo?v=e%201" },
-          { logoUrl: null },
+          {
+            logoUrl: "https://auth.example.id/branding/orgs/acme/logo?v=e%201",
+            logoDarkUrl: "https://auth.example.id/branding/orgs/acme/logo?variant=dark&v=d1",
+          },
+          { logoUrl: null, logoDarkUrl: null },
         ],
       },
     });
@@ -171,34 +178,48 @@ describe("org mutations", () => {
     postLogo.mockResolvedValue({ etag: "e", updatedAt: "t" });
     const fd = new FormData();
     fd.set("file", new File(["x"], "l.png", { type: "image/png" }));
-    const res = await actions.uploadOrgLogoAction("11111111-1111-4111-8111-111111111111", fd);
+    const res = await actions.uploadOrgLogoAction(
+      "11111111-1111-4111-8111-111111111111",
+      fd,
+      "dark"
+    );
     expect(res).toEqual({ ok: true, data: { etag: "e", updatedAt: "t" } });
     expect(postLogo).toHaveBeenCalledWith(
       "/api/admin/platform/orgs/11111111-1111-4111-8111-111111111111/logo",
-      fd
+      fd,
+      "dark"
     );
 
     const bad = new FormData();
     bad.set("file", new File(["x"], "l.gif", { type: "image/gif" }));
     expect(
-      await actions.uploadOrgLogoAction("11111111-1111-4111-8111-111111111111", bad)
+      await actions.uploadOrgLogoAction("11111111-1111-4111-8111-111111111111", bad, "dark")
     ).toMatchObject({ ok: false });
     expect(
-      await actions.uploadOrgLogoAction("11111111-1111-4111-8111-111111111111", new FormData())
+      await actions.uploadOrgLogoAction(
+        "11111111-1111-4111-8111-111111111111",
+        new FormData(),
+        "dark"
+      )
     ).toMatchObject({ ok: false });
     expect(postLogo).toHaveBeenCalledTimes(1);
   });
 
   it("removes a logo", async () => {
     apiClient.mockResolvedValue(ok(null));
-    expect(await actions.removeOrgLogoAction("11111111-1111-4111-8111-111111111111")).toEqual({
+    expect(
+      await actions.removeOrgLogoAction("11111111-1111-4111-8111-111111111111", "dark")
+    ).toEqual({
       ok: true,
       data: null,
     });
     expect(apiClient.mock.calls[0][0]).toBe(
       "/api/admin/platform/orgs/11111111-1111-4111-8111-111111111111/logo"
     );
-    expect(apiClient.mock.calls[0][1]).toMatchObject({ method: "DELETE" });
+    expect(apiClient.mock.calls[0][1]).toMatchObject({
+      method: "DELETE",
+      params: { variant: "dark" },
+    });
   });
 
   it("refuses invalid arguments with 'Data tidak valid'", async () => {
@@ -210,7 +231,11 @@ describe("org mutations", () => {
     expect(await actions.updateOrgAction("o1", { name: "x" })).toMatchObject(invalid);
     expect(await actions.setOrgAppAction(id, "a1", true)).toMatchObject(invalid);
     expect(await actions.listOrgAppsAction("o1")).toMatchObject(invalid);
-    expect(await actions.removeOrgLogoAction("o1")).toMatchObject(invalid);
+    expect(await actions.removeOrgLogoAction("o1", "dark")).toMatchObject(invalid);
+    expect(await actions.removeOrgLogoAction(id, "blue" as never)).toMatchObject(invalid);
+    expect(await actions.uploadOrgLogoAction(id, new FormData(), "blue" as never)).toMatchObject(
+      invalid
+    );
     expect(
       await actions.listOrgsAction({ page: 1, pageSize: 10, extra: 1 } as never)
     ).toMatchObject(invalid);
@@ -223,14 +248,16 @@ describe("org mutations", () => {
     const extra = new FormData();
     extra.set("file", new File(["x"], "l.png", { type: "image/png" }));
     extra.set("other", "y");
-    expect(await actions.uploadOrgLogoAction(id, extra)).toMatchObject(invalid);
+    expect(await actions.uploadOrgLogoAction(id, extra, "default")).toMatchObject(invalid);
     const wrongName = new FormData();
     wrongName.set("logo", new File(["x"], "l.png", { type: "image/png" }));
-    expect(await actions.uploadOrgLogoAction(id, wrongName)).toMatchObject(invalid);
+    expect(await actions.uploadOrgLogoAction(id, wrongName, "default")).toMatchObject(invalid);
     const notAFile = new FormData();
     notAFile.set("file", "text");
-    expect(await actions.uploadOrgLogoAction(id, notAFile)).toMatchObject(invalid);
-    expect(await actions.uploadOrgLogoAction(id, "nope" as never)).toMatchObject(invalid);
+    expect(await actions.uploadOrgLogoAction(id, notAFile, "default")).toMatchObject(invalid);
+    expect(await actions.uploadOrgLogoAction(id, "nope" as never, "default")).toMatchObject(
+      invalid
+    );
     expect(postLogo).not.toHaveBeenCalled();
   });
 });
