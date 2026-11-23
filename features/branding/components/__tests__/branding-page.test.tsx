@@ -52,6 +52,13 @@ describe("BrandingPage", () => {
     expect(screen.getByText(/5 menit/)).toBeInTheDocument();
   });
 
+  it("shows the real logo limits, never the 0 MB default", async () => {
+    actions.getBrandingAction.mockResolvedValue(ok(noLogo));
+    renderPage();
+    expect(await screen.findByText("PNG, JPG, atau WebP · maksimal 512 KB")).toBeInTheDocument();
+    expect(screen.queryByText(/maks\. 0 MB/)).not.toBeInTheDocument();
+  });
+
   it("refuses a 600 KB PNG and never calls the upload", async () => {
     actions.getBrandingAction.mockResolvedValue(ok(noLogo));
     renderPage();

@@ -13,6 +13,7 @@ import { LOGO_TYPES, validateLogo } from "../schema";
 // The dropzone enforces extensions itself, with its own wording. Listing the
 // usual image extensions lets every picked image reach `transformFile`, where
 // the exact BE-mirroring messages are produced (type via MIME, then size).
+const LOGO_HELPER = "PNG, JPG, atau WebP · maksimal 512 KB";
 const DROPZONE_EXTS = ".png,.jpg,.jpeg,.webp,.gif,.svg,.bmp,.tif,.tiff,.heic,.avif,.ico";
 
 type LogoUploaderProps = {
@@ -119,7 +120,7 @@ export function LogoUploader({ currentUrl, onUpload, onRemove }: LogoUploaderPro
           {state.message}
         </p>
       ) : (
-        <p className="text-xs text-muted-foreground">PNG, JPG, atau WebP, maksimal 512 KB.</p>
+        <p className="text-xs text-muted-foreground">{LOGO_HELPER}</p>
       )}
     </div>
   );
@@ -130,6 +131,7 @@ export function LogoUploader({ currentUrl, onUpload, onRemove }: LogoUploaderPro
         testId="logo-dropzone"
         accept={DROPZONE_EXTS}
         maxSizeMB={0}
+        helperText={LOGO_HELPER}
         value={file}
         onChange={setFile}
         readOnly={busy}
