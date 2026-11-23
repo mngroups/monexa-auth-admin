@@ -13,7 +13,12 @@ import { idSchema, pageParamsSchema, parseInput } from "@/features/admin-shared/
 import { postLogo } from "@/features/branding/actions/upload-logo";
 import { parseLogoForm } from "@/features/branding/helpers/logo-form";
 import { buildLogoUrl } from "@/features/branding/helpers/logo-url";
-import { type LogoMeta, validateLogo } from "@/features/branding/schema";
+import {
+  type LogoMeta,
+  type LogoVariant,
+  logoVariantSchema,
+  validateLogo,
+} from "@/features/branding/schema";
 import { apiClient } from "@/lib/session";
 
 import {
@@ -72,7 +77,11 @@ export async function listOrgsAction(
     );
     return {
       ...page,
-      items: page.items.map((org) => ({ ...org, logoUrl: buildLogoUrl(org.slug, org.logo) })),
+      items: page.items.map((org) => ({
+        ...org,
+        logoUrl: buildLogoUrl(org.slug, org.logo),
+        logoDarkUrl: buildLogoUrl(org.slug, org.logoDark, "dark"),
+      })),
     };
   });
 }
@@ -122,20 +131,26 @@ export async function setOrgAppAction(
 
 export async function uploadOrgLogoAction(
   orgId: string,
-  formData: FormData
+  formData: FormData,
+  variant: LogoVariant
 ): Promise<ServerActionResult<LogoMeta>> {
   return wrapServerAction(async () => {
     const endpoint = `${BASE}/${id(orgId)}/logo`;
+    const chosen = parseInput(logoVariantSchema, variant);
     const file = parseLogoForm(formData);
     const refusal = validateLogo(file);
     if (refusal) throw new ApiError(refusal, 422, 422);
-    return postLogo(endpoint, formData);
+    return postLogo(endpoint, formData, chosen);
   });
 }
 
-export async function removeOrgLogoAction(orgId: string): Promise<ServerActionResult<null>> {
+export async function removeOrgLogoAction(
+  orgId: string,
+  variant: LogoVariant
+): Promise<ServerActionResult<null>> {
   return wrapServerAction(async () => {
-    await call(`/${id(orgId)}/logo`, { method: "DELETE" }, z.null());
+    const params = { variant: parseInput(logoVariantSchema, variant) };
+    await call(`/${id(orgId)}/logo`, { method: "DELETE", params }, z.null());
     return null;
   });
 }
