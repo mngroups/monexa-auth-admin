@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import "@testing-library/jest-dom/vitest";
 import { clearAllFormDrafts } from "@mono/hooks/form-draft";
 import { toast } from "@mono/ui";
 import { cleanup, configure } from "@testing-library/react";
