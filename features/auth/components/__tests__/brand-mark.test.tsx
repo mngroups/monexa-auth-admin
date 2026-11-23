@@ -4,17 +4,31 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { BrandMark } from "../brand-mark";
 
 describe("BrandMark", () => {
-  it("shows the client logo", () => {
-    render(<BrandMark logoUrl="https://auth.test/branding/orgs/pt/logo" />);
-    expect(screen.getByRole("img", { name: "Monexa Admin" })).toHaveAttribute(
-      "src",
-      "https://auth.test/branding/orgs/pt/logo"
-    );
+  const LOGO = "https://auth.test/branding/orgs/pt/logo";
+
+  it("renders the default and dark logos with theme visibility classes", () => {
+    const { container } = render(<BrandMark logoUrl={LOGO} />);
+    const imgs = container.querySelectorAll("img");
+    expect(imgs).toHaveLength(2);
+    expect(imgs[0]).toHaveAttribute("src", LOGO);
+    expect(imgs[0]).toHaveAttribute("alt", "Monexa Admin");
+    expect(imgs[0]).toHaveClass("dark:hidden");
+    expect(imgs[1]).toHaveAttribute("src", `${LOGO}?variant=dark`);
+    expect(imgs[1]).toHaveClass("hidden", "dark:block");
+  });
+
+  it("shows the default logo in dark mode when the dark variant fails", () => {
+    const { container } = render(<BrandMark logoUrl={LOGO} />);
+    fireEvent.error(container.querySelectorAll("img")[1]);
+    const imgs = container.querySelectorAll("img");
+    expect(imgs).toHaveLength(1);
+    expect(imgs[0]).toHaveAttribute("src", LOGO);
+    expect(imgs[0]).not.toHaveClass("dark:hidden");
   });
 
   it("falls back to the app name when the logo can't load", () => {
-    render(<BrandMark logoUrl="https://auth.test/branding/orgs/none/logo" />);
-    fireEvent.error(screen.getByRole("img"));
+    const { container } = render(<BrandMark logoUrl={LOGO} />);
+    fireEvent.error(container.querySelectorAll("img")[0]);
     expect(screen.queryByRole("img")).not.toBeInTheDocument();
     expect(screen.getByText("Monexa Admin")).toBeInTheDocument();
   });
@@ -36,11 +50,24 @@ describe("BrandMark", () => {
       expect(screen.getByText("Monexa Admin")).toBeInTheDocument();
     });
 
+    it("drops only the dark variant when it failed before hydration", () => {
+      vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(true);
+      vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockImplementation(function (
+        this: HTMLImageElement
+      ) {
+        return this.src.endsWith("variant=dark") ? 0 : 120;
+      });
+      const { container } = render(<BrandMark logoUrl={LOGO} />);
+      const imgs = container.querySelectorAll("img");
+      expect(imgs).toHaveLength(1);
+      expect(imgs[0]).not.toHaveClass("dark:hidden");
+    });
+
     it("keeps a logo that loaded before hydration", () => {
       vi.spyOn(HTMLImageElement.prototype, "complete", "get").mockReturnValue(true);
       vi.spyOn(HTMLImageElement.prototype, "naturalWidth", "get").mockReturnValue(120);
-      render(<BrandMark logoUrl="https://auth.test/branding/orgs/pt/logo" />);
-      expect(screen.getByRole("img")).toBeInTheDocument();
+      render(<BrandMark logoUrl={LOGO} />);
+      expect(screen.getAllByRole("img", { hidden: true })).toHaveLength(2);
     });
   });
 });
