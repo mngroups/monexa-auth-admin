@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^5.9.2",
-    "@mono/auth": "^0.3.0",
+    "@mono/auth": "^0.3.1",
     "@mono/hooks": "^0.2.1",
     "@mono/ui": "^0.2.2",
     "@mono/utils": "^0.2.0",
